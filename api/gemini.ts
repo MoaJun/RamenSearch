@@ -1,4 +1,3 @@
-import GoogleGenerativeAI from '@google/genai';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
 export default async function handler(
@@ -21,6 +20,9 @@ export default async function handler(
     if (!prompt) {
       return res.status(400).json({ error: 'Prompt is required' });
     }
+
+    // Dynamically import GoogleGenerativeAI to avoid ESM/CJS issues
+    const { GoogleGenerativeAI } = await import('@google/genai');
 
     const genAI = new GoogleGenerativeAI(GOOGLE_API_KEY);
     const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
