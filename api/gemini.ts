@@ -1,4 +1,4 @@
-import { GoogleGenerativeAI } from '@google/genai';
+import GoogleGenerativeAI from '@google/genai';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
 export default async function handler(
