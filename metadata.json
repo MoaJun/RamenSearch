@@ -1,0 +1,8 @@
+{
+  "name": "Ramen Compass",
+  "description": "An application for efficiently finding ramen shops that match your preferences near your current location, and for planning, recording, and sharing your visits.",
+  "requestFramePermissions": [
+    "camera"
+  ],
+  "prompt": ""
+}
