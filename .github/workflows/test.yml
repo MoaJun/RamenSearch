@@ -18,22 +18,27 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
       
+    - name: Setup pnpm
+      uses: pnpm/action-setup@v4
+      with:
+        version: 8
+        
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
         node-version: ${{ matrix.node-version }}
-        cache: 'npm'
+        cache: 'pnpm'
         
     - name: Install dependencies
-      run: npm ci
+      run: pnpm install --frozen-lockfile
       
     - name: Type check
-      run: npm run build
+      run: pnpm build
       
     - name: Run lint (if available)
       run: |
-        if npm run | grep -q "lint"; then
-          npm run lint
+        if pnpm run | grep -q "lint"; then
+          pnpm lint
         else
           echo "No lint script found, skipping"
         fi
@@ -41,15 +46,15 @@ jobs:
       
     - name: Run tests (if available)
       run: |
-        if npm run | grep -q "test"; then
-          npm test
+        if pnpm run | grep -q "test"; then
+          pnpm test
         else
           echo "No test script found, skipping"
         fi
       continue-on-error: true
       
     - name: Build project
-      run: npm run build
+      run: pnpm build
       
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
