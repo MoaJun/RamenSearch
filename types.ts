@@ -17,6 +17,7 @@ export interface RamenShop {
   hours: string;
   website: string;
   twitterUrl?: string;
+  instagramUrl?: string;
   reviews: Review[];
   distance: number; // in meters
   keywords: string[];
@@ -31,6 +32,8 @@ export interface Review {
   author: string;
   text: string;
   rating: number;
+  time?: number; // Unix timestamp
+  relative_time_description?: string; // "1週間前"等の相対表記
 }
 
 export interface UserPost {

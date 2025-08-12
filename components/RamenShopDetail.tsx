@@ -1,13 +1,12 @@
-
-import React, { useState } from 'react';
-import { RamenShop, UserPost, Photo } from '../types.ts';
-import { ChevronLeft, ChevronRight, Star, MapPin, Clock, Globe, Heart, Bookmark, CheckCircle, MessageSquare, Train, Users, BookOpen, ParkingSquare, Image as ImageIcon, ChevronDown, Lightbulb } from 'lucide-react';
-import FeatureTags from './FeatureTags.tsx';
-import ReviewAccordion from './ReviewAccordion.tsx';
-import UserPostForm from './UserPostForm.tsx';
-import UserPostList from './UserPostList.tsx';
+import React, { useState, Suspense } from 'react';
+import { RamenShop, UserPost } from '../types.ts';
+import { ArrowLeft, Star, MapPin, Clock, Bookmark, Heart, CheckSquare, ExternalLink, Car, Navigation, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
 import ReviewSummary from './ReviewSummary.tsx';
-import ResponsiveImage from './ResponsiveImage.tsx';
+import PhotoModal from './PhotoModal.tsx';
+import BusinessHours from './BusinessHours.tsx';
+
+// Lazy load Google Maps component for better performance
+const StoreMap = React.lazy(() => import('./StoreMap.tsx'));
 
 interface RamenShopDetailProps {
   shop: RamenShop;
@@ -21,47 +20,6 @@ interface RamenShopDetailProps {
   userPosts: UserPost[];
 }
 
-const DetailSection: React.FC<{ 
-  title: string; 
-  icon: React.ReactNode; 
-  children: React.ReactNode; 
-  className?: string;
-  isCollapsible?: boolean;
-  isExpanded?: boolean;
-  onToggle?: () => void;
-}> = ({ title, icon, children, className = "", isCollapsible, isExpanded, onToggle }) => {
-  if (isCollapsible) {
-    return (
-      <div className={`border-t border-gray-200 dark:border-gray-800 mt-1 ${className}`}>
-        <button onClick={onToggle} className="w-full flex justify-between items-center p-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500 rounded-lg">
-          <h3 className="text-lg font-semibold flex items-center dark:text-white pointer-events-none">
-            <span className="text-gray-500 dark:text-gray-400 mr-2">{icon}</span>
-            {title}
-          </h3>
-          <ChevronDown className={`w-5 h-5 text-gray-500 dark:text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
-        </button>
-        {isExpanded && (
-          <div className="px-4 pb-4 animate-fade-in-fast">
-            {children}
-          </div>
-        )}
-      </div>
-    );
-  }
-  
-  return (
-    <div className={`border-t border-gray-200 dark:border-gray-800 mt-1 p-4 ${className}`}>
-        <h3 className="text-lg font-semibold mb-3 flex items-center dark:text-white">
-            <span className="text-gray-500 dark:text-gray-400 mr-2">{icon}</span>
-            {title}
-        </h3>
-        {children}
-    </div>
-  );
-};
-
-
-
 
 const RamenShopDetail: React.FC<RamenShopDetailProps> = ({
   shop,
@@ -72,193 +30,307 @@ const RamenShopDetail: React.FC<RamenShopDetailProps> = ({
   onBookmarkToggle,
   onStatusToggle,
   onAddPost,
-  userPosts
+  userPosts,
 }) => {
-  const [currentImageIndex, setCurrentImageIndex] = useState(0);
-  const [isMenuExpanded, setIsMenuExpanded] = useState(false);
-  const [isSummaryExpanded, setIsSummaryExpanded] = useState(false);
-
-  const streetViewPhoto: Photo = {
-      small: `https://picsum.photos/seed/${shop.placeId}-street/400/200`,
-      medium: `https://picsum.photos/seed/${shop.placeId}-street/800/400`,
-      large: `https://picsum.photos/seed/${shop.placeId}-street/1200/600`,
-      alt: 'Street View'
-  };
-  
-  const INITIAL_MENU_ITEMS = 4;
-  const isLongMenu = shop.menu.length > INITIAL_MENU_ITEMS;
-  const displayedMenuItems = isMenuExpanded ? shop.menu : shop.menu.slice(0, INITIAL_MENU_ITEMS);
-
-  const nextImage = () => {
-    setCurrentImageIndex((prevIndex) => (prevIndex + 1) % shop.photos.length);
-  };
-
-  const prevImage = () => {
-    setCurrentImageIndex((prevIndex) => (prevIndex - 1 + shop.photos.length) % shop.photos.length);
-  };
-
+  const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
+  const [showAllReviews, setShowAllReviews] = useState(false);
+  const [isPhotoModalOpen, setIsPhotoModalOpen] = useState(false);
   return (
-    <div className="animate-slide-in-right bg-white dark:bg-gray-900 pb-20">
-      <div className="relative group">
-        <ResponsiveImage 
-            photo={shop.photos[currentImageIndex]} 
-            sizes="100vw"
-            className="w-full h-64 md:h-80 object-cover transition-opacity duration-300"
-        />
-        
+    <div className="min-h-screen bg-gray-950 text-gray-200">
+      <header className="sticky top-0 z-30 bg-gray-900 border-b border-gray-800 px-4 py-3">
         <button
           onClick={onBack}
-          className="absolute top-4 left-4 z-10 bg-black bg-opacity-50 text-white rounded-full p-2 hover:bg-opacity-75 transition"
+          className="flex items-center text-gray-300 hover:text-white transition-colors"
         >
-          <ChevronLeft className="h-6 w-6" />
+          <ArrowLeft className="h-5 w-5 mr-2" />
+          戻る
         </button>
+      </header>
 
-        {shop.photos.length > 1 && (
-          <>
-            <button
-              onClick={prevImage}
-              className="absolute top-1/2 left-2 -translate-y-1/2 z-10 bg-black bg-opacity-30 text-white rounded-full p-2 hover:bg-opacity-60 transition opacity-0 group-hover:opacity-100"
-            >
-              <ChevronLeft className="h-6 w-6" />
-            </button>
-            <button
-              onClick={nextImage}
-              className="absolute top-1/2 right-2 -translate-y-1/2 z-10 bg-black bg-opacity-30 text-white rounded-full p-2 hover:bg-opacity-60 transition opacity-0 group-hover:opacity-100"
-            >
-              <ChevronRight className="h-6 w-6" />
-            </button>
-            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-2">
-              {shop.photos.map((_photo, index) => (
-                <div
-                  key={index}
-                  onClick={() => setCurrentImageIndex(index)}
-                  className={`w-2 h-2 rounded-full cursor-pointer transition-all ${
-                    currentImageIndex === index ? 'bg-white w-4' : 'bg-white/50'
-                  }`}
-                />
-              ))}
-            </div>
-          </>
-        )}
-      </div>
-
-      <div className="p-4">
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{shop.name}</h2>
-        <div className="flex items-center text-md text-gray-600 dark:text-gray-300 mt-2">
-          <Star className="w-5 h-5 text-yellow-500 dark:text-yellow-400 mr-1.5" fill="currentColor" />
-          <span className="font-bold text-yellow-600 dark:text-yellow-400">{shop.rating.toFixed(1)}</span>
-          <span className={`ml-4 px-2 py-1 text-xs font-semibold rounded-full ${shop.isOpenNow ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : 'bg-gray-200 text-gray-800 dark:bg-gray-700 dark:text-gray-300'}`}>
-            {shop.isOpenNow ? '営業中' : '営業時間外'}
-          </span>
-          <span className="mx-2 text-gray-300 dark:text-gray-600">|</span>
-          <MapPin className="w-5 h-5 text-gray-400 dark:text-gray-500 mr-1.5" />
-          <span>{shop.address}</span>
-        </div>
-
-        <div className="mt-4 flex space-x-2">
-          <button
-            onClick={onBookmarkToggle}
-            className={`flex items-center px-4 py-2 rounded-full text-sm font-semibold transition border ${
-              isBookmarked ? 'bg-red-500 text-white border-red-500' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700'
-            }`}
-          >
-            <Bookmark className="w-4 h-4 mr-2" fill={isBookmarked ? 'currentColor' : 'none'} />
-            気になる
-          </button>
-          <button
-            onClick={() => onStatusToggle('visited')}
-            className={`flex items-center px-4 py-2 rounded-full text-sm font-semibold transition border ${
-              isVisited ? 'bg-green-500 text-white border-green-500' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700'
-            }`}
-          >
-            <CheckCircle className="w-4 h-4 mr-2" />
-            訪問済み
-          </button>
-          <button
-            onClick={() => onStatusToggle('favorite')}
-            className={`flex items-center px-4 py-2 rounded-full text-sm font-semibold transition border ${
-              isFavorite ? 'bg-pink-500 text-white border-pink-500' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700'
-            }`}
-          >
-            <Heart className="w-4 h-4 mr-2" />
-            お気に入り
-          </button>
-        </div>
-      </div>
-
-      <div className="border-t border-gray-200 dark:border-gray-800 mt-4 p-4">
-        <h3 className="text-lg font-semibold mb-3 dark:text-white">レビューからわかる特徴</h3>
-        <FeatureTags placeId={shop.placeId} reviews={shop.reviews} />
-      </div>
-      
-      <DetailSection 
-        title="AIによるクチコミ要約" 
-        icon={<Lightbulb className="w-5 h-5" />}
-        isCollapsible
-        isExpanded={isSummaryExpanded}
-        onToggle={() => setIsSummaryExpanded(!isSummaryExpanded)}
-      >
-        <ReviewSummary placeId={shop.placeId} reviews={shop.reviews} />
-      </DetailSection>
-      
-      <DetailSection title="店舗情報" icon={<Clock className="w-5 h-5"/>}>
-        <ul className="space-y-3 text-gray-700 dark:text-gray-300">
-          <li className="flex items-start"><span className="w-5 h-5 mr-3 mt-1" /><span className="whitespace-pre-line">{shop.hours}</span></li>
-          <li className="flex items-center">
-            <Globe className="w-5 h-5 mr-3 text-gray-400 dark:text-gray-500" />
-            <a href={shop.website} target="_blank" rel="noopener noreferrer" className="text-red-600 dark:text-red-500 hover:underline">公式サイト</a>
-          </li>
-          {shop.twitterUrl && (
-            <li className="flex items-center">
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 mr-3 text-gray-400 dark:text-gray-500" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" /></svg>
-              <a href={shop.twitterUrl} target="_blank" rel="noopener noreferrer" className="text-red-600 dark:text-red-500 hover:underline">Xで臨時情報を確認</a>
-            </li>
-          )}
-        </ul>
-      </DetailSection>
-
-      
-      
-      <DetailSection title="写真" icon={<ImageIcon className="w-5 h-5" />}>
-        <div className="flex gap-2 overflow-x-auto pb-2 -mx-4 px-4">
-          {shop.photos.map((photo, index) => (
-            <div key={index} className="flex-shrink-0" onClick={() => setCurrentImageIndex(index)}>
-              <ResponsiveImage
-                photo={photo}
-                sizes="112px"
-                className="w-28 h-28 object-cover rounded-lg cursor-pointer border-2 border-transparent hover:border-red-500 transition-colors"
-              />
-            </div>
-          ))}
-        </div>
-      </DetailSection>
-
-      <DetailSection title="メニュー" icon={<BookOpen className="w-5 h-5" />}>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 text-gray-700 dark:text-gray-300">
-            {displayedMenuItems.map((item, index) => (
-                <div key={index} className="flex justify-between border-b border-dashed border-gray-200 dark:border-gray-700 py-1">
-                    <span>{item.name}</span>
-                    <span className="font-semibold">{item.price}</span>
+      <div className="max-w-4xl mx-auto p-6">
+        <div className="bg-gray-900 rounded-lg shadow-lg overflow-hidden">
+          {/* Photo Gallery Carousel */}
+          <div className="relative">
+            <img 
+              src={shop.photos[currentPhotoIndex]?.large || shop.photos[0]?.medium || ''} 
+              alt={`${shop.name} - ${currentPhotoIndex + 1}`}
+              className="w-full h-64 object-cover cursor-pointer"
+              onClick={() => setIsPhotoModalOpen(true)}
+            />
+            
+            {shop.photos.length > 1 && (
+              <>
+                {/* Navigation Arrows */}
+                <button
+                  onClick={() => setCurrentPhotoIndex(prev => 
+                    prev === 0 ? shop.photos.length - 1 : prev - 1
+                  )}
+                  className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/50 text-white p-2 rounded-full hover:bg-black/70 transition-colors"
+                  aria-label="前の写真"
+                >
+                  <ChevronLeft className="h-5 w-5" />
+                </button>
+                <button
+                  onClick={() => setCurrentPhotoIndex(prev => 
+                    prev === shop.photos.length - 1 ? 0 : prev + 1
+                  )}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/50 text-white p-2 rounded-full hover:bg-black/70 transition-colors"
+                  aria-label="次の写真"
+                >
+                  <ChevronRight className="h-5 w-5" />
+                </button>
+                
+                {/* Photo Counter */}
+                <div className="absolute top-2 right-2 bg-black/50 text-white px-2 py-1 rounded text-sm">
+                  {currentPhotoIndex + 1} / {shop.photos.length}
                 </div>
-            ))}
-        </div>
-        {isLongMenu && (
-          <button 
-            onClick={() => setIsMenuExpanded(!isMenuExpanded)}
-            className="w-full mt-3 text-center text-red-600 dark:text-red-500 font-semibold text-sm hover:text-red-800 dark:hover:text-red-400 flex items-center justify-center"
-          >
-            {isMenuExpanded ? '少なく表示' : 'もっと見る'}
-            <ChevronDown className={`w-5 h-5 ml-1 transition-transform ${isMenuExpanded ? 'rotate-180' : ''}`} />
-          </button>
-        )}
-      </DetailSection>
+                
+                {/* Indicators */}
+                <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex space-x-2">
+                  {shop.photos.map((_, index) => (
+                    <button
+                      key={index}
+                      onClick={() => setCurrentPhotoIndex(index)}
+                      className={`w-2 h-2 rounded-full transition-colors ${
+                        index === currentPhotoIndex ? 'bg-white' : 'bg-white/50'
+                      }`}
+                      aria-label={`写真 ${index + 1} に移動`}
+                    />
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+          
+          <div className="p-6">
+            <h1 className="text-3xl font-bold text-white mb-2">{shop.name}</h1>
+            
+            <div className="flex items-center mb-4 flex-wrap gap-4">
+              <div className="flex items-center">
+                <Star className="h-5 w-5 text-yellow-500 mr-1" fill="currentColor" />
+                <span className="text-yellow-500 font-bold">{shop.rating.toFixed(1)}</span>
+              </div>
+              <div className="flex items-center text-gray-400">
+                <MapPin className="h-4 w-4 mr-1" />
+                <span>{Math.round(shop.distance)}m</span>
+              </div>
+              {shop.isOpenNow ? (
+                <span className="inline-flex items-center text-sm font-semibold px-3 py-1 rounded-full bg-green-600 text-green-100">
+                  営業中
+                </span>
+              ) : (
+                <span className="inline-flex items-center text-sm font-semibold px-3 py-1 rounded-full bg-gray-600 text-gray-100">
+                  営業時間外
+                </span>
+              )}
+            </div>
 
-      
-      
-      <DetailSection title="みんなの投稿" icon={<MessageSquare className="w-5 h-5" />}>
-         <UserPostForm placeId={shop.placeId} onAddPost={onAddPost} />
-         <UserPostList posts={userPosts} />
-      </DetailSection>
+            <p className="text-gray-300 mb-4">{shop.address}</p>
+            
+            <div className="flex space-x-2 mb-6">
+              <button
+                onClick={onBookmarkToggle}
+                className={`flex items-center px-4 py-2 rounded-lg transition-colors ${
+                  isBookmarked ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                }`}
+              >
+                <Bookmark className="h-4 w-4 mr-2" />
+                {isBookmarked ? 'ブックマーク済み' : 'ブックマーク'}
+              </button>
+              
+              <button
+                onClick={() => onStatusToggle('visited')}
+                className={`flex items-center px-4 py-2 rounded-lg transition-colors ${
+                  isVisited ? 'bg-green-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                }`}
+              >
+                <CheckSquare className="h-4 w-4 mr-2" />
+                {isVisited ? '行った' : '行く'}
+              </button>
+              
+              <button
+                onClick={() => onStatusToggle('favorite')}
+                className={`flex items-center px-4 py-2 rounded-lg transition-colors ${
+                  isFavorite ? 'bg-red-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                }`}
+              >
+                <Heart className="h-4 w-4 mr-2" />
+                {isFavorite ? 'お気に入り' : 'お気に入り'}
+              </button>
+            </div>
+
+            <div className="space-y-6">
+              {/* Map Section */}
+              <div>
+                <h3 className="text-xl font-semibold mb-3">地図・アクセス</h3>
+                <Suspense fallback={<div className="w-full h-64 bg-gray-800 rounded-lg flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-500"></div></div>}>
+                  <StoreMap shop={shop} apiKey={import.meta.env.VITE_GOOGLE_MAPS_API_KEY || ''} />
+                </Suspense>
+                <div className="mt-3 text-sm text-gray-400 space-y-1">
+                  <p className="flex items-center">
+                    <MapPin className="h-4 w-4 mr-2" />
+                    {shop.address}
+                  </p>
+                  {shop.accessInfo && (
+                    <p className="flex items-center">
+                      <Navigation className="h-4 w-4 mr-2" />
+                      {shop.accessInfo}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* Store Info Section */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <h3 className="text-xl font-semibold mb-3">店舗情報</h3>
+                  <div className="space-y-2 text-gray-300">
+                    <BusinessHours hours={shop.hours} isOpenNow={shop.isOpenNow} />
+                    {(shop.twitterUrl || shop.instagramUrl) && (
+                      <div className="flex items-center">
+                        <ExternalLink className="h-4 w-4 mr-2 text-gray-400" />
+                        {shop.twitterUrl ? (
+                          <a href={shop.twitterUrl} className="text-blue-400 hover:text-blue-300">
+                            X (Twitter)
+                          </a>
+                        ) : (
+                          <a href={shop.instagramUrl} className="text-blue-400 hover:text-blue-300">
+                            Instagram
+                          </a>
+                        )}
+                      </div>
+                    )}
+                    {shop.parkingInfo && (
+                      <div className="flex items-center">
+                        <Car className="h-4 w-4 mr-2 text-gray-400" />
+                        <span>{shop.parkingInfo}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                
+                <div>
+                  <h3 className="text-xl font-semibold mb-3">移動時間目安</h3>
+                  <div className="bg-gray-800 rounded-lg p-3">
+                    <p className="text-sm text-gray-400 mb-2">現在地または検索地点から</p>
+                    <div className="space-y-2 text-gray-300">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center">
+                          <span className="mr-2">🚶</span>
+                          <span>徒歩</span>
+                        </div>
+                        <span className="font-semibold">約{Math.ceil(shop.distance / 80)}分 ({Math.round(shop.distance)}m)</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center">
+                          <span className="mr-2">🚗</span>
+                          <span>車</span>
+                        </div>
+                        <span className="font-semibold">約{Math.max(1, Math.ceil(shop.distance / 400))}分</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Ramen Photos Section */}
+              {shop.photos && shop.photos.length > 1 && (
+                <div>
+                  <h3 className="text-xl font-semibold mb-3">ラーメンの写真</h3>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                    {shop.photos.slice(1, 7).map((photo, index) => (
+                      <div key={index + 1} className="aspect-square overflow-hidden rounded-lg bg-gray-800">
+                        <img 
+                          src={photo.medium || photo.large || ''} 
+                          alt={`${shop.name}のラーメン ${index + 1}`}
+                          className="w-full h-full object-cover hover:scale-105 transition-transform duration-200 cursor-pointer"
+                          onClick={() => {
+                            setCurrentPhotoIndex(index + 1);
+                            setIsPhotoModalOpen(true);
+                          }}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                  {shop.photos.length > 7 && (
+                    <p className="text-sm text-gray-400 mt-2 text-center">
+                      他にも{shop.photos.length - 7}枚の写真があります
+                    </p>
+                  )}
+                </div>
+              )}
+              
+              
+              {/* Reviews Section */}
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-xl font-semibold">レビュー</h3>
+                  <span className="text-sm text-gray-400">Googleレビュー {shop.reviews.length}件</span>
+                </div>
+                
+                {/* AI Summary Section */}
+                {shop.reviews && shop.reviews.length > 0 && (
+                  <div className="mb-6">
+                    <h4 className="text-lg font-medium mb-3 text-blue-400">AI要約</h4>
+                    <div className="bg-gray-800/50 rounded-lg p-4">
+                      <ReviewSummary placeId={shop.placeId} reviews={shop.reviews} />
+                    </div>
+                  </div>
+                )}
+                
+                <div className="space-y-3">
+                  {(showAllReviews ? shop.reviews : shop.reviews.slice(0, 2)).map((review, index) => (
+                    <div key={index} className="bg-gray-800 rounded-lg p-3">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center">
+                          <div className="flex">
+                            {[...Array(5)].map((_, i) => (
+                              <Star 
+                                key={i} 
+                                className={`w-4 h-4 ${i < review.rating ? 'text-yellow-400' : 'text-gray-500'}`} 
+                                fill="currentColor" 
+                              />
+                            ))}
+                          </div>
+                          <span className="ml-2 text-sm font-medium">{review.author}</span>
+                        </div>
+                        {review.relative_time_description && (
+                          <span className="text-xs text-gray-400">{review.relative_time_description}</span>
+                        )}
+                      </div>
+                      <p className="text-sm text-gray-300 whitespace-pre-line">{review.text}</p>
+                    </div>
+                  ))}
+                  {shop.reviews.length > 2 && (
+                    <button
+                      onClick={() => setShowAllReviews(!showAllReviews)}
+                      className="w-full text-center text-blue-400 hover:text-blue-300 font-semibold text-sm flex items-center justify-center"
+                    >
+                      {showAllReviews ? 'レビューを閉じる' : `他のレビュー${shop.reviews.length - 2}件を表示`}
+                      <ChevronDown className={`w-4 h-4 ml-1 transition-transform ${showAllReviews ? 'rotate-180' : ''}`} />
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Photo Modal */}
+      <PhotoModal
+        isOpen={isPhotoModalOpen}
+        photos={shop.photos}
+        currentIndex={currentPhotoIndex}
+        onClose={() => setIsPhotoModalOpen(false)}
+        onPrevious={() => setCurrentPhotoIndex(prev => 
+          prev === 0 ? shop.photos.length - 1 : prev - 1
+        )}
+        onNext={() => setCurrentPhotoIndex(prev => 
+          prev === shop.photos.length - 1 ? 0 : prev + 1
+        )}
+        shopName={shop.name}
+      />
     </div>
   );
 };

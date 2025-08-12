@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { X, Paperclip, Send, Image as ImageIcon, Loader2 } from 'lucide-react';
+import { X, Send, Image as ImageIcon, Loader2 } from 'lucide-react';
 
 interface FeedbackModalProps {
     isOpen: boolean;

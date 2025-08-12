@@ -106,4 +106,4 @@ const ReviewSummary: React.FC<ReviewSummaryProps> = ({ placeId, reviews }) => {
   );
 };
 
-export default ReviewSummary;
+export default React.memo(ReviewSummary);

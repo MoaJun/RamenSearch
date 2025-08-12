@@ -3,9 +3,9 @@ import { GoogleGenAI, Type } from "@google/genai";
 import { ReviewSummaryData } from '../types.ts';
 
 // Ensure you have your API_KEY in environment variables
-const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+const apiKey = (import.meta as any).env?.VITE_GEMINI_API_KEY || (import.meta as any).env?.GEMINI_API_KEY;
 if (!apiKey) {
-    console.warn("API_KEY is not set. Feature tag generation will not work.");
+    console.warn("API_KEY is not set. Using mock data for AI features.");
 }
 
 const ai = new GoogleGenAI({ apiKey: apiKey || "" });
@@ -13,6 +13,31 @@ const ai = new GoogleGenAI({ apiKey: apiKey || "" });
 // In-memory cache
 const tagsCache = new Map<string, string[]>();
 const summaryCache = new Map<string, ReviewSummaryData>();
+
+// Rate limiting for Gemini 1.5 Flash free tier (15 RPM, 250,000 TPM)
+const rateLimiter = {
+  requests: [] as number[],
+  maxRequests: 15, // 15 requests per minute for Gemini 1.5 Flash
+  windowMs: 60000, // 1 minute
+  
+  canMakeRequest(): boolean {
+    const now = Date.now();
+    // Remove old requests outside the window
+    this.requests = this.requests.filter(time => now - time < this.windowMs);
+    
+    return this.requests.length < this.maxRequests;
+  },
+  
+  recordRequest(): void {
+    this.requests.push(Date.now());
+  },
+  
+  getWaitTime(): number {
+    if (this.requests.length === 0) return 0;
+    const oldestRequest = Math.min(...this.requests);
+    return Math.max(0, this.windowMs - (Date.now() - oldestRequest));
+  }
+};
 
 
 export async function generateFeatureTags(placeId: string, reviewText: string): Promise<string[]> {
@@ -50,6 +75,9 @@ export async function generateFeatureTags(placeId: string, reviewText: string): 
     });
     
     const jsonText = response.text;
+    if (typeof jsonText !== 'string') {
+      throw new Error('Invalid response format: response.text is not a string.');
+    }
     const parsed = JSON.parse(jsonText);
     
     if (parsed && parsed.tags && Array.isArray(parsed.tags)) {
@@ -81,10 +109,31 @@ export async function generateReviewSummary(placeId: string, reviewText: string)
     return mockSummary;
   }
 
+  // Check rate limit
+  if (!rateLimiter.canMakeRequest()) {
+    const waitTime = rateLimiter.getWaitTime();
+    console.warn(`Rate limit reached. Please wait ${Math.ceil(waitTime / 1000)} seconds.`);
+    
+    // Return fallback data instead of throwing error
+    const fallbackSummary = {
+      goodPoints: ["API制限により一時的に要約を生成できません"],
+      badPoints: [`${Math.ceil(waitTime / 1000)}秒後に再度お試しください`],
+      tips: ["詳細なレビューは下記の個別レビューをご確認ください"]
+    };
+    return fallbackSummary;
+  }
+
   try {
+    // Record the request
+    rateLimiter.recordRequest();
+
+    // レビューテキストを適度に制限（品質とコストのバランス）
+    const limitedReviewText = reviewText.length > 4000 ? 
+      reviewText.substring(0, 4000) + "..." : reviewText;
+
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: `以下のラーメン店のレビュー群を総合的に分析し、内容を要約してください。:\n\n${reviewText}`,
+      model: "gemini-1.5-flash", // 無料枠でより多く使えるモデル
+      contents: `以下のラーメン店のレビュー群を分析し、JSON形式で要約してください:\n\n${limitedReviewText}\n\n必ず以下のJSON形式で回答してください:\n{"goodPoints":["良い点1","良い点2"],"badPoints":["改善点1","改善点2"],"tips":["ヒント1","ヒント2"]}`,
       config: {
         responseMimeType: "application/json",
         responseSchema: {
@@ -92,37 +141,97 @@ export async function generateReviewSummary(placeId: string, reviewText: string)
           properties: {
             goodPoints: {
               type: Type.ARRAY,
-              description: "この店の特に評価されている良い点や長所を箇条書きでまとめたリスト。",
+              description: "この店の特に評価されている良い点や長所を箇条書きでまとめたリスト。最大4つ。",
               items: { type: Type.STRING }
             },
             badPoints: {
               type: Type.ARRAY,
-              description: "この店の改善点や注意すべき点、人によっては短所と感じる可能性のある点を箇条書きでまとめたリスト。",
+              description: "この店の改善点や注意すべき点、人によっては短所と感じる可能性のある点を箇条書きでまとめたリスト。最大4つ。",
               items: { type: Type.STRING }
             },
             tips: {
               type: Type.ARRAY,
-              description: "この店を訪れる際の裏技、おすすめの食べ方、注意点などのヒントを箇条書きでまとめたリスト。",
+              description: "この店を訪れる際の裏技、おすすめの食べ方、注意点などのヒントを箇条書きでまとめたリスト。最大4つ。",
               items: { type: Type.STRING }
             }
           }
         },
-        systemInstruction: "あなたは経験豊富なフードジャーナリストです。提供された複数のカスタマーレビューを注意深く読み込み、店の評判を「良い点」「惜しい点（改善点）」「ヒント」の3つのカテゴリに分けて、それぞれ簡潔な日本語の箇条書きで要約してください。客観的な事実に基づき、具体的な表現を心がけてください。"
+        systemInstruction: "あなたは経験豊富なフードジャーナリストです。レビューを分析して、必ず有効なJSON形式で回答してください。文字列には改行や特殊文字を含めず、短い箇条書きで要約してください。",
+        maxOutputTokens: 512, // より短い出力に制限してJSONの安定性を向上
+        temperature: 0.2 // より一貫した出力のため温度を下げる
       }
     });
 
-    const jsonText = response.text.trim();
-    const parsed = JSON.parse(jsonText) as ReviewSummaryData;
-
-    if (parsed && parsed.goodPoints && parsed.badPoints && parsed.tips) {
-      summaryCache.set(placeId, parsed); // Store in cache
-      return parsed;
+    const jsonText = response.text?.trim() || '';
+    if (typeof jsonText !== 'string') {
+      throw new Error('Invalid response format: response.text is not a string.');
+    }
+    
+    // Debug logging (only in development)
+    if (import.meta.env.DEV) {
+      console.log('Raw Gemini response:', jsonText);
+    }
+    
+    let parsed: ReviewSummaryData;
+    try {
+      // Try to clean up the JSON string if it has issues
+      const cleanedJsonText = jsonText
+        .replace(/[\u0000-\u001F\u007F-\u009F]/g, '') // Remove control characters
+        .replace(/\n/g, '\\n') // Escape newlines
+        .replace(/\r/g, '\\r') // Escape carriage returns
+        .replace(/\t/g, '\\t'); // Escape tabs
+      
+      if (import.meta.env.DEV) {
+        console.log('Cleaned JSON:', cleanedJsonText);
+      }
+      parsed = JSON.parse(cleanedJsonText) as ReviewSummaryData;
+    } catch (parseError) {
+      console.error('JSON Parse Error:', parseError);
+      console.error('Problematic JSON text:', jsonText);
+      
+      // Try to extract JSON manually as a fallback
+      const jsonMatch = jsonText.match(/\{.*\}/s);
+      if (jsonMatch) {
+        try {
+          parsed = JSON.parse(jsonMatch[0]) as ReviewSummaryData;
+        } catch (secondParseError) {
+          console.error('Second parse attempt failed:', secondParseError);
+          throw new Error(`Failed to parse JSON response: ${parseError.message}`);
+        }
+      } else {
+        throw new Error('No valid JSON found in response');
+      }
     }
 
+    // Validate the parsed response structure
+    if (parsed && typeof parsed === 'object') {
+      const validatedSummary: ReviewSummaryData = {
+        goodPoints: Array.isArray(parsed.goodPoints) ? parsed.goodPoints : [],
+        badPoints: Array.isArray(parsed.badPoints) ? parsed.badPoints : [],
+        tips: Array.isArray(parsed.tips) ? parsed.tips : []
+      };
+      
+      // Only cache if we have at least some content
+      if (validatedSummary.goodPoints.length > 0 || 
+          validatedSummary.badPoints.length > 0 || 
+          validatedSummary.tips.length > 0) {
+        summaryCache.set(placeId, validatedSummary);
+        return validatedSummary;
+      }
+    }
+
+    // Return empty structure if parsing failed or no content
     return { goodPoints: [], badPoints: [], tips: [] };
 
   } catch (error) {
     console.error("Error generating review summary with Gemini API:", error);
-    throw new Error("Failed to communicate with Gemini API for summary.");
+    
+    // API制限やエラーの場合はフォールバック用のモックデータを返す
+    const fallbackSummary = {
+      goodPoints: ["API制限により一時的に要約を生成できません"],
+      badPoints: ["しばらく時間をおいて再度お試しください"],
+      tips: ["詳細なレビューは下記の個別レビューをご確認ください"]
+    };
+    return fallbackSummary;
   }
 }

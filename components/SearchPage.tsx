@@ -1,12 +1,30 @@
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { RamenShop } from '../types.ts';
-import { MOCK_RAMEN_SHOPS } from '../constants.ts';
 import RamenShopListItem from './RamenShopListItem.tsx';
-import { Search, ArrowDownUp, MapPin, LocateFixed, Clock } from 'lucide-react';
+import { ArrowDownUp, MapPin, LocateFixed } from 'lucide-react';
 import RamenShopListItemSkeleton from './RamenShopListItemSkeleton.tsx';
 
 interface SearchPageProps {
   onShopSelect: (shop: RamenShop) => void;
+  searchTerm: string;
+  setSearchTerm: (term: string) => void;
+  sortKey: SortKey;
+  setSortKey: (key: SortKey) => void;
+  soupTypeFilter: string;
+  setSoupTypeFilter: (filter: string) => void;
+  filterOpenNow: boolean;
+  setFilterOpenNow: (filter: boolean) => void;
+  shops: RamenShop[];
+  setShops: (shops: RamenShop[]) => void;
+  isLocating: boolean;
+  setIsLocating: (locating: boolean) => void;
+  isFiltering: boolean;
+  setIsFiltering: (filtering: boolean) => void;
+  userLocation: React.MutableRefObject<google.maps.LatLngLiteral | null>;
+  hoveredPlaceId: string | null;
+  setHoveredPlaceId: (id: string | null) => void;
+  highlightedPlaceId: string | null;
+  setHighlightedPlaceId: (id: string | null) => void;
 }
 
 type SortKey = 'distance' | 'rating';
@@ -14,18 +32,135 @@ type SortKey = 'distance' | 'rating';
 // スープの種類をユーザー指定の順序で定義
 const SOUP_TYPES = ['醤油', '豚骨', '家系', '味噌', '担々麺', '鶏白湯', '煮干', '昆布水', '貝出汁', '鴨出汁', '二郎'];
 
-const SearchPage: React.FC<SearchPageProps> = ({ onShopSelect }) => {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [sortKey, setSortKey] = useState<SortKey>('distance');
-  const [soupTypeFilter, setSoupTypeFilter] = useState<string>('');
-  const [filterOpenNow, setFilterOpenNow] = useState<boolean>(false);
-  const [shops, setShops] = useState<RamenShop[]>([]);
-  const [isLocating, setIsLocating] = useState(false);
-  const [isFiltering, setIsFiltering] = useState(false);
-  const [hoveredPlaceId, setHoveredPlaceId] = useState<string | null>(null);
-  const [highlightedPlaceId, setHighlightedPlaceId] = useState<string | null>(null);
+// ラーメン検索用キーワード
+const RAMEN_KEYWORDS = ['ラーメン', 'ラーメン屋', '拉麺', 'ramen', '中華そば', '麺', 'らーめん', '麺処', '麺屋', '麺ダイニング', '家系', '鶏soba', 'らー麺', '中華蕎麦', 'らぁ麺', 'らぁめん', '麺や', 'えびそば', '麺堂', '麺匠', '麺宿', 'つけ麺', '鶏そば', 'Ramen', 'SOBA', '油そば', '製麺', 'タンメン', '担々麺', '鯛塩そば', 'つけめん', '支那そば', 'まぜそば', 'Noodle', 'ラー麺'];
+
+// 除外キーワード（洋食屋・居酒屋・そば屋などをフィルタリング）
+const EXCLUDE_KEYWORDS = ['洋食', '居酒屋', 'イタリアン', 'フレンチ', 'カフェ', 'coffee', 'レストラン', 'bistro', 'brasserie', 'trattoria', 'osteria', 'うどん', '蕎麦', 'そば', 'スパゲッティ', 'パスタ', 'ピザ', 'pizza', 'バー', 'bar', '焼肉', 'yakiniku', '寿司', 'sushi', '天ぷら', 'tempura', '定食', 'teishoku'];
+
+// ラーメン関連キーワード（複数段階での検出用）
+const RAMEN_INDICATORS = {
+  strong: ['ラーメン', '拉麺', 'ramen', '中華そば', 'つけ麺', '油そば', '混ぜそば', '二郎', '家系', '豚骨', '味噌', '醤油', '塩ラーメン'],
+  medium: ['麺', 'そば', 'noodle', 'メン', '麺屋', 'らーめん'],
+  weak: ['チャーシュー', '替え玉', '煮卵', 'もやし', 'のり', '背脂']
+};
+
+// スマートフィルタリング機能：店舗がラーメン店かどうかを判定
+const evaluateRamenShopProbability = (place: google.maps.places.PlaceResult): { isRamenShop: boolean; confidence: number; reason: string } => {
+  const name = place.name || '';
+  const vicinity = place.vicinity || '';
+  const types = place.types || [];
+  const searchText = `${name} ${vicinity} ${types.join(' ')}`.toLowerCase();
+  
+  // 除外キーワードチェック（優先度高）
+  const hasExcludeKeyword = EXCLUDE_KEYWORDS.some(keyword => 
+    searchText.includes(keyword.toLowerCase())
+  );
+  
+  if (hasExcludeKeyword) {
+    return { isRamenShop: false, confidence: 0.9, reason: 'exclude_keyword_found' };
+  }
+  
+  // ラーメン関連キーワードでスコア計算
+  let score = 0;
+  const foundIndicators: string[] = [];
+  
+  // Strong indicators (高得点)
+  RAMEN_INDICATORS.strong.forEach(indicator => {
+    if (searchText.includes(indicator.toLowerCase())) {
+      score += 10;
+      foundIndicators.push(`strong:${indicator}`);
+    }
+  });
+  
+  // Medium indicators (中得点)
+  RAMEN_INDICATORS.medium.forEach(indicator => {
+    if (searchText.includes(indicator.toLowerCase())) {
+      score += 5;
+      foundIndicators.push(`medium:${indicator}`);
+    }
+  });
+  
+  // Weak indicators (低得点)
+  RAMEN_INDICATORS.weak.forEach(indicator => {
+    if (searchText.includes(indicator.toLowerCase())) {
+      score += 2;
+      foundIndicators.push(`weak:${indicator}`);
+    }
+  });
+  
+  // レストランタイプ評価
+  if (types.includes('restaurant') || types.includes('meal_takeaway')) {
+    score += 3;
+  }
+  
+  const confidence = Math.min(score / 10, 1.0);
+  const isRamenShop = score >= 5; // 閾値：5点以上
+  
+  console.log(`${name}: score=${score}, confidence=${confidence}, indicators=[${foundIndicators.join(',')}]`);
+  
+  return { 
+    isRamenShop, 
+    confidence, 
+    reason: foundIndicators.length > 0 ? foundIndicators.join(',') : 'no_indicators'
+  };
+};
+
+
+// メニュー情報を生成する関数
+const generateMenuForPlace = (placeId: string) => {
+  const menuTemplates = [
+    [
+      { name: '醤油ラーメン', price: '800円' },
+      { name: '味玉ラーメン', price: '950円' },
+      { name: 'チャーシューメン', price: '1,200円' },
+      { name: '餃子 (5個)', price: '450円' },
+      { name: 'ライス', price: '150円' },
+    ],
+    [
+      { name: '豚骨ラーメン', price: '900円' },
+      { name: '特製ラーメン', price: '1,100円' },
+      { name: 'チャーシュー丸', price: '350円' },
+      { name: 'キムチ', price: '200円' },
+      { name: '替え玉', price: '100円' },
+      { name: '瓶ビール', price: '600円' },
+    ],
+    [
+      { name: '味噌ラーメン', price: '850円' },
+      { name: '野菜ラーメン', price: '1,000円' },
+      { name: 'コーンバター', price: '100円' },
+      { name: 'もやし', price: '200円' },
+    ]
+  ];
+  
+  // placeIdのハッシュでメニューを選択
+  const hash = placeId.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  return menuTemplates[hash % menuTemplates.length];
+};
+
+const SearchPage: React.FC<SearchPageProps> = ({ 
+  onShopSelect,
+  searchTerm,
+  setSearchTerm,
+  sortKey,
+  setSortKey,
+  soupTypeFilter,
+  setSoupTypeFilter,
+  filterOpenNow,
+  setFilterOpenNow,
+  shops,
+  setShops,
+  isLocating,
+  setIsLocating,
+  isFiltering,
+  setIsFiltering,
+  userLocation,
+  hoveredPlaceId,
+  setHoveredPlaceId,
+  highlightedPlaceId,
+  setHighlightedPlaceId
+}) => {
   const [geocoder, setGeocoder] = useState<google.maps.Geocoder | null>(null);
-  const userLocation = useRef<google.maps.LatLngLiteral | null>(null);
   const mapRef = useRef<HTMLDivElement | null>(null);
   const mapInstance = useRef<google.maps.Map | null>(null);
   const markers = useRef<google.maps.Marker[]>([]);
@@ -48,6 +183,11 @@ const SearchPage: React.FC<SearchPageProps> = ({ onShopSelect }) => {
         mapId: '281e9bf8d5a1aa29156aabcf', // Your Map ID
         disableDefaultUI: true,
       });
+      
+      // Add click listener to clear highlights when clicking on empty map area
+      mapInstance.current.addListener('click', () => {
+        setHighlightedPlaceId(null);
+      });
     }
   }, []); // 空の依存配列で初回マウント時のみ実行
 
@@ -63,12 +203,40 @@ const SearchPage: React.FC<SearchPageProps> = ({ onShopSelect }) => {
     if (shops.length > 0) {
       shops.forEach((shop, index) => {
         if (shop.lat && shop.lng) {
+          const isHighlighted = hoveredPlaceId === shop.placeId || highlightedPlaceId === shop.placeId;
           const marker = new window.google.maps.Marker({
             position: { lat: shop.lat, lng: shop.lng },
             map: mapInstance.current,
             title: shop.name,
             label: `${index + 1}`,
+            zIndex: isHighlighted ? 1000 : 1,
+            animation: isHighlighted ? window.google.maps.Animation.BOUNCE : null,
           });
+          
+          // Set bounce animation timeout for better UX
+          if (isHighlighted) {
+            setTimeout(() => {
+              marker.setAnimation(null);
+            }, 2100); // Stop bouncing after ~2 seconds
+          }
+          
+          // Add click event for marker to list synchronization
+          marker.addListener('click', () => {
+            const newHighlightedId = highlightedPlaceId === shop.placeId ? null : shop.placeId;
+            setHighlightedPlaceId(newHighlightedId);
+            // Scroll to corresponding list item
+            if (newHighlightedId) {
+              const listItem = itemRefs.current[shop.placeId];
+              if (listItem) {
+                listItem.scrollIntoView({ 
+                  behavior: 'smooth', 
+                  block: 'center',
+                  inline: 'nearest'
+                });
+              }
+            }
+          });
+          
           markers.current.push(marker);
         }
       });
@@ -82,7 +250,7 @@ const SearchPage: React.FC<SearchPageProps> = ({ onShopSelect }) => {
       });
       mapInstance.current.fitBounds(bounds);
     }
-  }, [shops]);
+  }, [shops, hoveredPlaceId, highlightedPlaceId, setHighlightedPlaceId]);
 
   // 距離を計算するヘルパー関数 (ヒュベニの公式)
   const calculateDistance = useCallback((lat1: number, lon1: number, lat2: number, lon2: number) => {
@@ -99,6 +267,66 @@ const SearchPage: React.FC<SearchPageProps> = ({ onShopSelect }) => {
 
     const d = R * c; // in metres
     return d;
+  }, []);
+
+  // 複合検索戦略の実行（スマートフィルタリング付き）
+  const performComprehensiveSearch = useCallback(async (location: google.maps.LatLngLiteral, placesService: google.maps.places.PlacesService) => {
+    const foundPlaces = new Map<string, any>(); // place_idをキーとして重複を防ぐ
+    const rejectedPlaces: string[] = [];
+
+    // メイン検索 - 全34キーワードを並列検索で高速化
+    const searchPromises = RAMEN_KEYWORDS.map(async (keyword) => {
+      const request: google.maps.places.PlaceSearchRequest = {
+        location,
+        radius: 300,
+        keyword,
+        type: 'restaurant',
+      };
+
+      try {
+        const results = await new Promise<google.maps.places.PlaceResult[]>((resolve) => {
+          placesService.nearbySearch(request, (results, status) => {
+            if (status === google.maps.places.PlacesServiceStatus.OK && results) {
+              resolve(results);
+            } else {
+              resolve([]);
+            }
+          });
+        });
+
+        return { keyword, results: results || [] };
+      } catch (error) {
+        console.warn(`Search failed for keyword: ${keyword}`, error);
+        return { keyword, results: [] };
+      }
+    });
+
+    // 全検索を並列実行
+    const searchResults = await Promise.all(searchPromises);
+    
+    // 結果をマージしてフィルタリング
+    searchResults.forEach(({ keyword, results }) => {
+      results.forEach(place => {
+        if (place.place_id && !foundPlaces.has(place.place_id)) {
+          const evaluation = evaluateRamenShopProbability(place);
+          
+          if (evaluation.isRamenShop && evaluation.confidence >= 0.5) {
+            foundPlaces.set(place.place_id, { ...place, evaluation, searchKeyword: keyword });
+          } else {
+            rejectedPlaces.push(`${place.name} (${evaluation.reason}, confidence: ${evaluation.confidence.toFixed(2)})`);
+          }
+        }
+      });
+    });
+
+    console.log(`Smart filtering results:`);
+    console.log(`- Accepted: ${foundPlaces.size} ramen shops`);
+    console.log(`- Rejected: ${rejectedPlaces.length} non-ramen places`);
+    if (rejectedPlaces.length > 0) {
+      console.log(`- Rejected places: ${rejectedPlaces.slice(0, 5).join(', ')}${rejectedPlaces.length > 5 ? '...' : ''}`);
+    }
+    
+    return Array.from(foundPlaces.values());
   }, []);
 
   const calculateIsOpen = (openingHours: google.maps.places.PlaceOpeningHours | undefined): boolean => {
@@ -147,23 +375,14 @@ const SearchPage: React.FC<SearchPageProps> = ({ onShopSelect }) => {
         throw new Error('Google Maps API is not loaded.');
       }
 
-      const request: google.maps.places.PlaceSearchRequest = {
-        location: userLocation.current,
-        radius: 300, // 300m圏内を検索
-        keyword: 'ラーメン',
-        type: 'restaurant',
-      };
-
       const placesService = new window.google.maps.places.PlacesService(document.createElement('div'));
       
-      const searchResponse = await new Promise<{ results: google.maps.places.PlaceResult[] | null; status: google.maps.places.PlacesServiceStatus }>((resolve) => {
-        placesService.nearbySearch(request, (results, status) => {
-          resolve({ results, status });
-        });
-      });
+      // 新しい複合検索戦略を使用
+      const searchResults = await performComprehensiveSearch(userLocation.current, placesService);
+      console.log('Comprehensive search results:', searchResults);
 
-      if (searchResponse.status === google.maps.places.PlacesServiceStatus.OK && searchResponse.results) {
-        const detailPromises = searchResponse.results.map(place => {
+      if (searchResults && searchResults.length > 0) {
+        const detailPromises = searchResults.map(place => {
           return new Promise<RamenShop | null>((resolve) => {
             if (!place.place_id) {
               resolve(null);
@@ -176,28 +395,45 @@ const SearchPage: React.FC<SearchPageProps> = ({ onShopSelect }) => {
                 const distance = (lat && lng && userLocation.current)
                   ? calculateDistance(userLocation.current.lat, userLocation.current.lng, lat, lng)
                   : 0;
-                const photoUrl = detailedPlace.photos && detailedPlace.photos.length > 0
-                  ? detailedPlace.photos[0].getUrl({ maxWidth: 400, maxHeight: 300 })
-                  : 'https://picsum.photos/seed/ramen-default/400/300';
+                // Get multiple photos if available
+                const photos = detailedPlace.photos && detailedPlace.photos.length > 0
+                  ? detailedPlace.photos.slice(0, 4).map((photo, index) => ({
+                      small: photo.getUrl({ maxWidth: 400, maxHeight: 300 }),
+                      medium: photo.getUrl({ maxWidth: 800, maxHeight: 600 }),
+                      large: photo.getUrl({ maxWidth: 1200, maxHeight: 900 }),
+                      alt: `${detailedPlace.name || ''} - ${index + 1}`
+                    }))
+                  : [{ 
+                      small: 'https://picsum.photos/seed/ramen-default/400/300', 
+                      medium: 'https://picsum.photos/seed/ramen-default/800/600', 
+                      large: 'https://picsum.photos/seed/ramen-default/1200/900', 
+                      alt: detailedPlace.name || 'ラーメン店' 
+                    }];
 
                 const shop: RamenShop = {
                   placeId: detailedPlace.place_id || `temp-${Math.random().toString(36).substring(2, 15)}`,
                   name: detailedPlace.name || '',
-                  photos: [{ small: photoUrl, medium: photoUrl, large: photoUrl, alt: detailedPlace.name || '' }],
+                  photos: photos,
                   rating: detailedPlace.rating || 0,
                   address: detailedPlace.formatted_address || '',
                   lat: lat || 0,
                   lng: lng || 0,
                   hours: detailedPlace.opening_hours?.weekday_text?.join('\n') || '営業時間情報なし',
                   website: detailedPlace.website || '',
-                  reviews: detailedPlace.reviews?.map(r => ({ author: r.author_name, text: r.text, rating: r.rating })) || [],
+                  reviews: detailedPlace.reviews?.map(r => ({ 
+                    author: r.author_name || '', 
+                    text: r.text || '', 
+                    rating: r.rating || 0,
+                    time: r.time,
+                    relative_time_description: r.relative_time_description
+                  })) || [],
                   distance: distance,
                   keywords: detailedPlace.types || [],
                   isOpenNow: calculateIsOpen(detailedPlace.opening_hours),
                   congestion: '不明',
                   accessInfo: '',
-                  menu: [],
-                  parkingInfo: '',
+                  menu: generateMenuForPlace(detailedPlace.place_id || ''),
+                  parkingInfo: '近隣コインパーキングあり',
                 };
                 resolve(shop);
               } else {
@@ -210,7 +446,7 @@ const SearchPage: React.FC<SearchPageProps> = ({ onShopSelect }) => {
         const fetchedShops = (await Promise.all(detailPromises)).filter((s): s is RamenShop => s !== null);
         setShops(fetchedShops.sort((a, b) => a.distance - b.distance));
       } else {
-        console.error('Google Places API Error:', searchResponse.status);
+        console.warn('No search results found');
         setShops([]);
       }
     } catch (error) {
@@ -233,7 +469,7 @@ const SearchPage: React.FC<SearchPageProps> = ({ onShopSelect }) => {
     try {
       const geocodeResult = await new Promise<{ results: google.maps.GeocoderResult[]; status: google.maps.GeocoderStatus }>((resolve) => {
         geocoder.geocode({ address: searchTerm }, (results, status) => {
-          resolve({ results, status });
+          resolve({ results: results || [], status });
         });
       });
 
@@ -241,27 +477,18 @@ const SearchPage: React.FC<SearchPageProps> = ({ onShopSelect }) => {
         throw new Error('Geocoding failed or returned no results.');
       }
 
-      const location = geocodeResult.results[0].geometry.location;
+      const location = geocodeResult.results![0].geometry.location;
       userLocation.current = { lat: location.lat(), lng: location.lng() };
       
 
-      const request: google.maps.places.PlaceSearchRequest = {
-        location: userLocation.current,
-        radius: 300, // 300m圏内を検索
-        keyword: 'ラーメン',
-        type: 'restaurant',
-      };
-
       const placesService = new window.google.maps.places.PlacesService(document.createElement('div'));
       
-      const searchResponse = await new Promise<{ results: google.maps.places.PlaceResult[] | null; status: google.maps.places.PlacesServiceStatus }>((resolve) => {
-        placesService.nearbySearch(request, (results, status) => {
-          resolve({ results, status });
-        });
-      });
+      // 新しい複合検索戦略を使用
+      const searchResults = await performComprehensiveSearch(userLocation.current, placesService);
+      console.log('Comprehensive search results (by area):', searchResults);
 
-      if (searchResponse.status === google.maps.places.PlacesServiceStatus.OK && searchResponse.results) {
-        const detailPromises = searchResponse.results.map(place => {
+      if (searchResults && searchResults.length > 0) {
+        const detailPromises = searchResults.map(place => {
           return new Promise<RamenShop | null>((resolve) => {
             if (!place.place_id) {
               resolve(null);
@@ -274,28 +501,45 @@ const SearchPage: React.FC<SearchPageProps> = ({ onShopSelect }) => {
                 const distance = (lat && lng && userLocation.current)
                   ? calculateDistance(userLocation.current.lat, userLocation.current.lng, lat, lng)
                   : 0;
-                const photoUrl = detailedPlace.photos && detailedPlace.photos.length > 0
-                  ? detailedPlace.photos[0].getUrl({ maxWidth: 400, maxHeight: 300 })
-                  : 'https://picsum.photos/seed/ramen-default/400/300';
+                // Get multiple photos if available
+                const photos = detailedPlace.photos && detailedPlace.photos.length > 0
+                  ? detailedPlace.photos.slice(0, 4).map((photo, index) => ({
+                      small: photo.getUrl({ maxWidth: 400, maxHeight: 300 }),
+                      medium: photo.getUrl({ maxWidth: 800, maxHeight: 600 }),
+                      large: photo.getUrl({ maxWidth: 1200, maxHeight: 900 }),
+                      alt: `${detailedPlace.name || ''} - ${index + 1}`
+                    }))
+                  : [{ 
+                      small: 'https://picsum.photos/seed/ramen-default/400/300', 
+                      medium: 'https://picsum.photos/seed/ramen-default/800/600', 
+                      large: 'https://picsum.photos/seed/ramen-default/1200/900', 
+                      alt: detailedPlace.name || 'ラーメン店' 
+                    }];
 
                 const shop: RamenShop = {
                   placeId: detailedPlace.place_id || `temp-${Math.random().toString(36).substring(2, 15)}`,
                   name: detailedPlace.name || '',
-                  photos: [{ small: photoUrl, medium: photoUrl, large: photoUrl, alt: detailedPlace.name || '' }],
+                  photos: photos,
                   rating: detailedPlace.rating || 0,
                   address: detailedPlace.formatted_address || '',
                   lat: lat || 0,
                   lng: lng || 0,
                   hours: detailedPlace.opening_hours?.weekday_text?.join('\n') || '営業時間情報なし',
                   website: detailedPlace.website || '',
-                  reviews: detailedPlace.reviews?.map(r => ({ author: r.author_name, text: r.text, rating: r.rating })) || [],
+                  reviews: detailedPlace.reviews?.map(r => ({ 
+                    author: r.author_name || '', 
+                    text: r.text || '', 
+                    rating: r.rating || 0,
+                    time: r.time,
+                    relative_time_description: r.relative_time_description
+                  })) || [],
                   distance: distance,
                   keywords: detailedPlace.types || [],
                   isOpenNow: calculateIsOpen(detailedPlace.opening_hours),
                   congestion: '不明',
                   accessInfo: '',
-                  menu: [],
-                  parkingInfo: '',
+                  menu: generateMenuForPlace(detailedPlace.place_id || ''),
+                  parkingInfo: '近隣コインパーキングあり',
                 };
                 resolve(shop);
               } else {
@@ -308,7 +552,7 @@ const SearchPage: React.FC<SearchPageProps> = ({ onShopSelect }) => {
         const fetchedShops = (await Promise.all(detailPromises)).filter((s): s is RamenShop => s !== null);
         setShops(fetchedShops.sort((a, b) => a.distance - b.distance));
       } else {
-        console.error('Google Places API Error:', searchResponse.status);
+        console.warn('No search results found');
         setShops([]);
       }
     } catch (error) {
@@ -318,33 +562,6 @@ const SearchPage: React.FC<SearchPageProps> = ({ onShopSelect }) => {
     } finally {
       setIsFiltering(false);
     }
-  };
-  
-  const handlePinClick = (placeId: string) => {
-    const itemEl = itemRefs.current[placeId];
-    if (itemEl) {
-        itemEl.scrollIntoView({
-            behavior: 'smooth',
-            block: 'center',
-        });
-        setHighlightedPlaceId(placeId);
-        setTimeout(() => {
-            setHighlightedPlaceId(null);
-        }, 2500); // Highlight for 2.5 seconds
-    }
-  };
-
-
-  const getPinPosition = (placeId: string) => {
-    let hash = 0;
-    for (let i = 0; i < placeId.length; i++) {
-        const char = placeId.charCodeAt(i);
-        hash = ((hash << 5) - hash) + char;
-        hash = hash & hash;
-    }
-    const top = (Math.abs(hash) % 70) + 15;
-    const left = (Math.abs(hash * 31) % 80) + 10;
-    return { top: `${top}%`, left: `${left}%` };
   };
 
   const filteredAndSortedShops = useMemo(() => {
@@ -397,12 +614,12 @@ const SearchPage: React.FC<SearchPageProps> = ({ onShopSelect }) => {
 
 
       {/* --- Map Pane --- */}
-      <div className="mt-4 h-64 md:h-80 bg-gray-800 rounded-lg shadow-inner relative overflow-hidden lg:col-span-5 lg:row-span-2 lg:col-start-8 lg:row-start-1 lg:mt-0 lg:sticky lg:top-[100px] lg:h-[calc(100vh-160px)] lg:max-h-[800px]">
+      <div className="mt-4 h-64 md:h-80 bg-gray-800 rounded-lg shadow-inner relative overflow-hidden lg:col-span-5 lg:row-span-2 lg:col-start-8 lg:row-start-1 lg:mt-0 lg:sticky lg:top-[100px] lg:h-[calc(100vh-160px)] lg:max-h-[800px] transition-all duration-300">
         <div ref={mapRef} className="w-full h-full"></div>
       </div>
       
       {/* --- Results Pane --- */}
-      <div className="mt-4 lg:col-span-7 lg:row-start-2">
+      <div className="mt-4 lg:col-span-7 lg:row-start-2 lg:max-h-[calc(100vh-200px)] lg:overflow-y-auto lg:pr-4">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
               <div className="flex flex-wrap gap-4 items-center">
                   <label htmlFor="soup-type" className="sr-only">スープの種類</label>
@@ -426,7 +643,7 @@ const SearchPage: React.FC<SearchPageProps> = ({ onShopSelect }) => {
                   </label>
               </div>
               <button
-                  onClick={() => setSortKey(prev => prev === 'distance' ? 'rating' : 'distance')}
+                  onClick={() => setSortKey(sortKey === 'distance' ? 'rating' : 'distance')}
                   className="flex items-center px-4 py-2 bg-gray-800 border border-gray-700 rounded-full text-sm text-gray-200 hover:bg-gray-700 transition shadow-sm"
               >
                   <ArrowDownUp className="h-4 w-4 mr-1.5" />
@@ -456,6 +673,7 @@ const SearchPage: React.FC<SearchPageProps> = ({ onShopSelect }) => {
                     isHighlighted={highlightedPlaceId === shop.placeId}
                     onMouseEnter={() => setHoveredPlaceId(shop.placeId)}
                     onMouseLeave={() => setHoveredPlaceId(null)}
+                    onClick={() => setHighlightedPlaceId(highlightedPlaceId === shop.placeId ? null : shop.placeId)}
                   />
                 </div>
               ))

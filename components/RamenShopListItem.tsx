@@ -13,6 +13,7 @@ interface RamenShopListItemProps {
   isHighlighted: boolean;
   onMouseEnter: () => void;
   onMouseLeave: () => void;
+  onClick?: () => void;
 }
 
 const CongestionIndicator: React.FC<{ status: RamenShop['congestion'] }> = ({ status }) => {
@@ -45,7 +46,7 @@ const ReviewItem: React.FC<{ review: Review }> = ({ review }) => (
     </div>
 );
 
-const RamenShopListItem: React.FC<RamenShopListItemProps> = ({ shop, onSelect, index, isHovered, isHighlighted, onMouseEnter, onMouseLeave }) => {
+const RamenShopListItem: React.FC<RamenShopListItemProps> = ({ shop, onSelect, index, isHovered, isHighlighted, onMouseEnter, onMouseLeave, onClick }) => {
   const [isReviewsOpen, setIsReviewsOpen] = useState(false);
   const [isSummaryOpen, setIsSummaryOpen] = useState(false);
   const [reviewPage, setReviewPage] = useState(0);
@@ -70,9 +71,13 @@ const RamenShopListItem: React.FC<RamenShopListItemProps> = ({ shop, onSelect, i
 
   return (
     <div
-      className={`bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden transition-all duration-300 group ${isHovered || isHighlighted ? 'ring-2 ring-red-500' : ''}`}
+      className={`bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden transition-all duration-300 group ${
+        isHighlighted ? 'ring-2 ring-blue-500 shadow-lg transform scale-105' : 
+        isHovered ? 'ring-2 ring-red-500' : ''
+      }`}
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
+      onClick={onClick}
     >
       <div className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/40 transition-colors" onClick={onSelect}>
         <ResponsiveImage photo={shop.photos[0]} sizes="(max-width: 768px) 100vw, 50vw" className="w-full h-40 object-cover" />
@@ -181,4 +186,4 @@ const RamenShopListItem: React.FC<RamenShopListItemProps> = ({ shop, onSelect, i
   );
 };
 
-export default RamenShopListItem;
+export default React.memo(RamenShopListItem);
