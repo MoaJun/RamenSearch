@@ -134,9 +134,10 @@ export default function App() {
     return Array.from(visited).map(placeId => shopsByPlaceId.get(placeId)).filter(Boolean);
   }, [visited, shopsByPlaceId]);
   
-  const favoriteShops = useMemo(() => {
-    return Array.from(favorites).map(placeId => shopsByPlaceId.get(placeId)).filter(Boolean);
-  }, [favorites, shopsByPlaceId]);
+  // Favorite shops are now managed by favoritesService in MyPage
+  // const favoriteShops = useMemo(() => {
+  //   return Array.from(favorites).map(placeId => shopsByPlaceId.get(placeId)).filter(Boolean);
+  // }, [favorites, shopsByPlaceId]);
 
   // Move useMemo outside of renderContent to fix hooks rule violation
   const filteredUserPosts = useMemo(() => {
@@ -197,7 +198,6 @@ export default function App() {
             <MyPage 
               bookmarkedShops={bookmarkedShops}
               visitedShops={visitedShops}
-              favoriteShops={favoriteShops}
               userPosts={userPosts}
               onShopSelect={setSelectedShop}
             />

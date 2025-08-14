@@ -1,0 +1,21 @@
+name: ramensearch
+language: typescript
+root_path: C:\Users\owner\.gemini\Sagyo\Serena\projects\ramensearch
+
+# Project-specific Language Server optimization
+settings:
+  language_server:
+    enable_semantic_tokens: false
+    enable_document_symbols: true
+    max_file_size_kb: 1024
+    excluded_patterns:
+      - "node_modules/**"
+      - "dist/**"
+      - "*.log"
+      - "*.map"
+      - ".git/**"
+    
+  analysis:
+    incremental_mode: true
+    cache_symbols: true
+    max_analysis_depth: 3

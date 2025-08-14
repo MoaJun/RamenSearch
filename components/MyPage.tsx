@@ -1,14 +1,14 @@
 
-import React, { useState } from 'react';
-import { RamenShop, UserPost } from '../types.ts';
+import React, { useState, useEffect } from 'react';
+import { RamenShop, UserPost, FavoriteShop } from '../types.ts';
 import RamenShopListItem from './RamenShopListItem.tsx';
-import { Bookmark, CheckCircle, Heart, Image as ImageIcon } from 'lucide-react';
+import { Bookmark, CheckCircle, Heart, Image as ImageIcon, Star, Calendar, MessageSquare } from 'lucide-react';
 import ResponsiveImage from './ResponsiveImage.tsx';
+import { favoritesService } from '../services/favoritesService.ts';
 
 interface MyPageProps {
   bookmarkedShops: RamenShop[];
   visitedShops: RamenShop[];
-  favoriteShops: RamenShop[];
   userPosts: UserPost[];
   onShopSelect: (shop: RamenShop) => void;
 }
@@ -34,11 +34,28 @@ const getCountClasses = (tabId: MyPageTab, activeTab: MyPageTab) => {
 const MyPage: React.FC<MyPageProps> = ({
   bookmarkedShops,
   visitedShops,
-  favoriteShops,
   userPosts,
   onShopSelect,
 }) => {
   const [activeTab, setActiveTab] = useState<MyPageTab>('bookmarks');
+  const [favoriteShops, setFavoriteShops] = useState<FavoriteShop[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadFavorites();
+  }, []);
+
+  const loadFavorites = async () => {
+    try {
+      setLoading(true);
+      const favorites = await favoritesService.getFavoritesSorted('recent');
+      setFavoriteShops(favorites);
+    } catch (error) {
+      console.error('Error loading favorites:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const tabs: { id: MyPageTab; label: string; icon: React.ReactNode; count: number }[] = [
     { id: 'bookmarks', label: '気になる', icon: <Bookmark className="w-5 h-5" />, count: bookmarkedShops.length },
@@ -47,18 +64,132 @@ const MyPage: React.FC<MyPageProps> = ({
     { id: 'posts', label: '自分の投稿', icon: <ImageIcon className="w-5 h-5" />, count: userPosts.length },
   ];
 
+  const renderFavoriteItem = (favorite: FavoriteShop) => (
+    <div key={favorite.placeId} className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow hover:shadow-md transition-shadow">
+      <div className="flex items-start justify-between">
+        <div className="flex-1">
+          <h3 className="font-semibold text-lg text-gray-900 dark:text-white cursor-pointer hover:text-red-600" 
+              onClick={() => onShopSelect({ 
+                placeId: favorite.placeId, 
+                name: favorite.name, 
+                address: favorite.address,
+                rating: favorite.rating 
+              } as RamenShop)}>
+            {favorite.name}
+          </h3>
+          <p className="text-sm text-gray-600 dark:text-gray-300 mb-2">{favorite.address}</p>
+          
+          <div className="flex items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
+            <span className="flex items-center gap-1">
+              <Star className="w-4 h-4" />
+              {favorite.rating.toFixed(1)}
+            </span>
+            {favorite.visitCount && favorite.visitCount > 0 && (
+              <span className="flex items-center gap-1">
+                <CheckCircle className="w-4 h-4" />
+                {favorite.visitCount}回訪問
+              </span>
+            )}
+            <span className="flex items-center gap-1">
+              <Calendar className="w-4 h-4" />
+              {favorite.savedAt.toLocaleDateString('ja-JP')}
+            </span>
+          </div>
+
+          {favorite.personalNotes && (
+            <div className="mt-2 p-2 bg-yellow-50 dark:bg-yellow-900/20 rounded text-sm">
+              <MessageSquare className="w-4 h-4 inline mr-1" />
+              {favorite.personalNotes}
+            </div>
+          )}
+
+          {favorite.tags && favorite.tags.length > 0 && (
+            <div className="mt-2 flex flex-wrap gap-1">
+              {favorite.tags.map((tag, index) => (
+                <span key={index} className="px-2 py-1 bg-red-100 text-red-800 text-xs rounded-full">
+                  {tag}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+        
+        <div className="ml-4 text-red-500">
+          <Heart className="w-6 h-6 fill-current" />
+        </div>
+      </div>
+    </div>
+  );
+
   const renderContent = () => {
-    let shops: RamenShop[] = [];
     switch (activeTab) {
       case 'bookmarks':
-        shops = bookmarkedShops;
-        break;
+        return (
+          <div className="space-y-4">
+            {bookmarkedShops.length > 0 ? (
+              bookmarkedShops.map((shop, index) => (
+                <RamenShopListItem 
+                  key={shop.placeId} 
+                  shop={shop} 
+                  index={index + 1} 
+                  onSelect={() => onShopSelect(shop)} 
+                  isHovered={false}
+                  isHighlighted={false}
+                  onMouseEnter={() => {}}
+                  onMouseLeave={() => {}}
+                />
+              ))
+            ) : (
+              <p className="text-center text-gray-500 dark:text-gray-400 py-8">まだ気になるお店がありません。</p>
+            )}
+          </div>
+        );
+        
       case 'visited':
-        shops = visitedShops;
-        break;
+        return (
+          <div className="space-y-4">
+            {visitedShops.length > 0 ? (
+              visitedShops.map((shop, index) => (
+                <RamenShopListItem 
+                  key={shop.placeId} 
+                  shop={shop} 
+                  index={index + 1} 
+                  onSelect={() => onShopSelect(shop)} 
+                  isHovered={false}
+                  isHighlighted={false}
+                  onMouseEnter={() => {}}
+                  onMouseLeave={() => {}}
+                />
+              ))
+            ) : (
+              <p className="text-center text-gray-500 dark:text-gray-400 py-8">まだ訪問したお店がありません。</p>
+            )}
+          </div>
+        );
+
       case 'favorites':
-        shops = favoriteShops;
-        break;
+        if (loading) {
+          return (
+            <div className="text-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-600 mx-auto"></div>
+              <p className="text-gray-500 dark:text-gray-400 mt-2">お気に入りを読み込み中...</p>
+            </div>
+          );
+        }
+        return (
+          <div className="space-y-4">
+            {favoriteShops.length > 0 ? (
+              favoriteShops.map(renderFavoriteItem)
+            ) : (
+              <div className="text-center py-8">
+                <Heart className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                <p className="text-gray-500 dark:text-gray-400">まだお気に入りのお店がありません。</p>
+                <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">お店の詳細ページでハートをタップしてお気に入りに追加しましょう。</p>
+              </div>
+            )}
+          </div>
+        );
+
       case 'posts':
         return (
           <div className="space-y-4">
@@ -76,26 +207,6 @@ const MyPage: React.FC<MyPageProps> = ({
           </div>
         );
     }
-    return (
-      <div className="space-y-4">
-        {shops.length > 0 ? (
-          shops.map((shop, index) => (
-            <RamenShopListItem 
-              key={shop.placeId} 
-              shop={shop} 
-              index={index + 1} 
-              onSelect={() => onShopSelect(shop)} 
-              isHovered={false}
-              isHighlighted={false}
-              onMouseEnter={() => {}}
-              onMouseLeave={() => {}}
-            />
-          ))
-        ) : (
-          <p className="text-center text-gray-500 dark:text-gray-400 py-8">まだ登録されたお店がありません。</p>
-        )}
-      </div>
-    );
   };
   
   return (

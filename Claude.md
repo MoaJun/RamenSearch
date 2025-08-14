@@ -276,6 +276,57 @@
     - クラスタリング/ズーム連動
     - リスナリークなし
 
+## Phase1実装完了記録（2025-08-12）
+
+### 完了した実装
+- **キャッシュ永続化**: `utils/persistentCache.ts` - localStorage + TTL
+- **お気に入り機能**: `services/favoritesService.ts` + `components/FavoriteButton.tsx`
+- **バンドル最適化**: vite.config.ts - 462KB総サイズ、113KB gzipped
+- **GitHub Actions**: `.github/workflows/test.yml` - pnpm対応済み
+
+### 修正したTypeScriptエラー
+- App.tsx: MyPageProps interface mismatch
+- 未使用import削除: BusinessHours.tsx, RamenShopDetail.tsx
+- vite-env.d.ts: 環境変数型定義追加
+
+### 現在の課題
+- Serena Language Server: LanguageServerTerminatedException (プロセスID21108)
+- Cipher記憶制限: "Maximum iterations exceeded" エラー
+
+### 次のステップ
+- Claude Code再起動でSerena Language Server問題解決
+- Phase2実装: マップクラスタリング、仮想化、訪問履歴
+
+## 追加トラブルシューティング記録（2025-08-12）
+
+### Serena Language Server継続問題
+- **状況**: Claude Code再起動後もLanguageServerTerminatedException継続
+- **プロセスID**: 50368（新プロセス、依然として異常終了）
+- **エラー詳細**: Language server stdout read process terminated unexpectedly
+- **実施した対策**:
+  - 依存関係再インストール（pnpm install --no-frozen-lockfile）
+  - TypeScript型チェック確認（エラーなし）
+  - Node.js環境確認（v22.17.0、推奨20.11.xと差異あり）
+
+### 環境状態
+- **Node.js**: v22.17.0 
+- **pnpm**: 10.13.1
+- **TypeScript**: 5.7.3
+- **プロジェクト**: 正常（型エラーなし、ビルド可能）
+
+### Cipher.yml設定と記憶機能テスト
+- **設定完了**: LM Studio qwen3-4b + qwen3-embedding-0.6b（1024次元）
+- **記憶テスト結果**: ❌ 会話履歴保存されていない
+- **問題**: "外部の会話履歴や以前のセッションにはアクセスできない"との応答
+- **要因候補**: 
+  - LM Studio接続問題（ポート1234）
+  - SQLite書き込み権限
+  - sessions.persistHistory設定不具合
+
+### 代替作業方針
+- Serena Language Serverなしで標準ツール（Read/Edit/Glob/Grep）使用
+- Phase2実装準備完了（依存関係正常化済み）
+
 付録E: 雛形（Vite + React + TS + Google Maps）
 
 ファイル: src/lib/googleMaps.ts import { Loader } from '@googlemaps/js-api-loader';

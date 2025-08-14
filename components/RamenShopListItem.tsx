@@ -4,6 +4,7 @@ import { RamenShop, Review } from '../types.ts';
 import { Star, MapPin, ChevronDown, ChevronLeft, ChevronRight, Train, Users, Lightbulb } from 'lucide-react';
 import ReviewSummary from './ReviewSummary.tsx';
 import ResponsiveImage from './ResponsiveImage.tsx';
+import FavoriteButton from './FavoriteButton.tsx';
 
 interface RamenShopListItemProps {
   shop: RamenShop;
@@ -87,7 +88,10 @@ const RamenShopListItem: React.FC<RamenShopListItemProps> = ({ shop, onSelect, i
                 <span className="flex items-center justify-center w-7 h-7 bg-red-600 text-white rounded-full font-bold text-sm shadow-md">{index}</span>
             </div>
             <div className="flex-grow min-w-0">
-                <h3 className="font-bold text-lg text-gray-800 dark:text-gray-100 truncate">{shop.name}</h3>
+                <div className="flex items-start justify-between">
+                  <h3 className="font-bold text-lg text-gray-800 dark:text-gray-100 truncate flex-1 mr-2">{shop.name}</h3>
+                  <FavoriteButton shop={shop} size="medium" />
+                </div>
                 <div className="flex items-center text-sm text-gray-500 dark:text-gray-400 mt-1">
                 <Star className="w-4 h-4 text-yellow-500 dark:text-yellow-400 mr-1 flex-shrink-0" fill="currentColor" />
                 <span className="font-bold text-yellow-600 dark:text-yellow-400 mr-2">{shop.rating.toFixed(1)}</span>

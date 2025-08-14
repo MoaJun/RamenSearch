@@ -1,6 +1,6 @@
 import React, { useState, Suspense } from 'react';
 import { RamenShop, UserPost } from '../types.ts';
-import { ArrowLeft, Star, MapPin, Clock, Bookmark, Heart, CheckSquare, ExternalLink, Car, Navigation, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ArrowLeft, Star, MapPin, Bookmark, Heart, CheckSquare, ExternalLink, Car, Navigation, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
 import ReviewSummary from './ReviewSummary.tsx';
 import PhotoModal from './PhotoModal.tsx';
 import BusinessHours from './BusinessHours.tsx';
@@ -29,8 +29,6 @@ const RamenShopDetail: React.FC<RamenShopDetailProps> = ({
   isFavorite,
   onBookmarkToggle,
   onStatusToggle,
-  onAddPost,
-  userPosts,
 }) => {
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
   const [showAllReviews, setShowAllReviews] = useState(false);

@@ -1,6 +1,7 @@
 
 import { GoogleGenAI, Type } from "@google/genai";
 import { ReviewSummaryData } from '../types.ts';
+import { geminiCache } from '../utils/persistentCache.ts';
 
 // Ensure you have your API_KEY in environment variables
 const apiKey = (import.meta as any).env?.VITE_GEMINI_API_KEY || (import.meta as any).env?.GEMINI_API_KEY;
@@ -10,9 +11,9 @@ if (!apiKey) {
 
 const ai = new GoogleGenAI({ apiKey: apiKey || "" });
 
-// In-memory cache
-const tagsCache = new Map<string, string[]>();
-const summaryCache = new Map<string, ReviewSummaryData>();
+// Cache TTL settings
+const TAGS_CACHE_TTL = 7 * 24 * 60 * 60 * 1000; // 7 days
+const SUMMARY_CACHE_TTL = 3 * 24 * 60 * 60 * 1000; // 3 days
 
 // Rate limiting for Gemini 1.5 Flash free tier (15 RPM, 250,000 TPM)
 const rateLimiter = {
@@ -41,14 +42,16 @@ const rateLimiter = {
 
 
 export async function generateFeatureTags(placeId: string, reviewText: string): Promise<string[]> {
-  if (tagsCache.has(placeId)) {
-    return tagsCache.get(placeId)!;
+  // Check persistent cache first
+  const cachedTags = await geminiCache.get<string[]>(`tags_${placeId}`);
+  if (cachedTags) {
+    return cachedTags;
   }
   
   if (!apiKey) {
     // Return mock data if API key is not available
     const mockTags = ["濃厚スープ", "チャーシューが絶品", "行列必至"];
-    tagsCache.set(placeId, mockTags);
+    await geminiCache.set(`tags_${placeId}`, mockTags, TAGS_CACHE_TTL);
     return mockTags;
   }
 
@@ -81,7 +84,7 @@ export async function generateFeatureTags(placeId: string, reviewText: string): 
     const parsed = JSON.parse(jsonText);
     
     if (parsed && parsed.tags && Array.isArray(parsed.tags)) {
-        tagsCache.set(placeId, parsed.tags); // Store in cache
+        await geminiCache.set(`tags_${placeId}`, parsed.tags, TAGS_CACHE_TTL);
         return parsed.tags;
     }
 
@@ -94,8 +97,10 @@ export async function generateFeatureTags(placeId: string, reviewText: string): 
 }
 
 export async function generateReviewSummary(placeId: string, reviewText: string): Promise<ReviewSummaryData> {
-  if (summaryCache.has(placeId)) {
-    return summaryCache.get(placeId)!;
+  // Check persistent cache first
+  const cachedSummary = await geminiCache.get<ReviewSummaryData>(`summary_${placeId}`);
+  if (cachedSummary) {
+    return cachedSummary;
   }
   
   if (!apiKey) {
@@ -105,7 +110,7 @@ export async function generateReviewSummary(placeId: string, reviewText: string)
       badPoints: ["週末は行列が長くなることがある", "店内はカウンター席のみで狭め"],
       tips: ["「替え玉」を「バリカタ」で頼むのが人気", "卓上の無料トッピング（高菜、紅生姜）を活用すべし"]
     };
-    summaryCache.set(placeId, mockSummary);
+    await geminiCache.set(`summary_${placeId}`, mockSummary, SUMMARY_CACHE_TTL);
     return mockSummary;
   }
 
@@ -196,7 +201,7 @@ export async function generateReviewSummary(placeId: string, reviewText: string)
           parsed = JSON.parse(jsonMatch[0]) as ReviewSummaryData;
         } catch (secondParseError) {
           console.error('Second parse attempt failed:', secondParseError);
-          throw new Error(`Failed to parse JSON response: ${parseError.message}`);
+          throw new Error(`Failed to parse JSON response: ${parseError instanceof Error ? parseError.message : 'Unknown error'}`);
         }
       } else {
         throw new Error('No valid JSON found in response');
@@ -215,7 +220,7 @@ export async function generateReviewSummary(placeId: string, reviewText: string)
       if (validatedSummary.goodPoints.length > 0 || 
           validatedSummary.badPoints.length > 0 || 
           validatedSummary.tips.length > 0) {
-        summaryCache.set(placeId, validatedSummary);
+        await geminiCache.set(`summary_${placeId}`, validatedSummary, SUMMARY_CACHE_TTL);
         return validatedSummary;
       }
     }

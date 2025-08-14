@@ -50,3 +50,24 @@ export interface ReviewSummaryData {
   badPoints: string[];
   tips: string[];
 }
+
+export interface FavoriteShop {
+  placeId: string;
+  name: string;
+  address: string;
+  rating: number;
+  savedAt: Date;
+  personalNotes?: string;
+  visitCount?: number;
+  lastVisit?: Date;
+  tags?: string[];
+}
+
+export interface VisitHistory {
+  placeId: string;
+  visitDate: Date;
+  rating?: number;
+  personalReview?: string;
+  photos?: string[];
+  spend?: number;
+}
