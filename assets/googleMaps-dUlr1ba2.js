@@ -1,0 +1,1 @@
+import{L as n}from"./google-maps-93e-Jyro.js";let o=null,e=null;async function i(r,a=["places"]){const l=r||"";if(!l)throw new Error("Missing VITE_GOOGLE_MAPS_API_KEY. Please set your Google Maps API key in .env.local");return e||(o||(o=new n({apiKey:l,version:"weekly",libraries:a})),e=o.load(),e)}export{i as l};
