@@ -40,50 +40,20 @@ export default defineConfig(({ mode }) => {
         reportCompressedSize: true,
         rollupOptions: {
           output: {
-            manualChunks: (id) => {
-              // Core React libraries
-              if (id.includes('react') || id.includes('react-dom')) {
-                return 'vendor';
-              }
-              
-              // Google services - lazy loaded
-              if (id.includes('@google/genai')) {
-                return 'ai';
-              }
-              if (id.includes('@googlemaps/js-api-loader') || id.includes('@googlemaps/markerclusterer')) {
-                return 'google-maps';
-              }
-              
-              // UI components
-              if (id.includes('lucide-react')) {
-                return 'ui';
-              }
-              
-              // Our utilities and services
-              if (id.includes('/utils/') || id.includes('/services/')) {
-                return 'utils';
-              }
-              
-              // Components chunk
-              if (id.includes('/components/')) {
-                return 'components';
-              }
-              
-              // Node modules that are not core dependencies
-              if (id.includes('node_modules')) {
-                return 'vendor';
-              }
+            manualChunks: {
+              vendor: ['react', 'react-dom'],
+              'google-maps': ['@googlemaps/js-api-loader', '@googlemaps/markerclusterer'],
+              ai: ['@google/genai'],
+              ui: ['lucide-react']
             },
             // Optimize file names for caching
             entryFileNames: 'assets/[name]-[hash].js',
             chunkFileNames: 'assets/[name]-[hash].js',
             assetFileNames: 'assets/[name]-[hash].[ext]'
           },
-          // Optimize imports
+          // Optimize imports with safer settings
           treeshake: {
-            moduleSideEffects: false,
-            propertyReadSideEffects: false,
-            unknownGlobalSideEffects: false
+            moduleSideEffects: 'no-external'
           }
         }
       }
