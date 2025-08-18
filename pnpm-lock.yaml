@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@google/genai':
-        specifier: ^1.9.0
-        version: 1.12.0
+        specifier: ^1.14.0
+        version: 1.14.0
       '@googlemaps/js-api-loader':
         specifier: ^1.16.10
         version: 1.16.10
@@ -213,8 +213,8 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@google/genai@1.12.0':
-    resolution: {integrity: sha512-JBkQsULVexdM9zY4iXbm3A2dJ7El/hSPGCnxuRWPJNgeqcfYuyUnPTSy+I/v+MvTbz/occVmONSD6wn+17QLkg==}
+  '@google/genai@1.14.0':
+    resolution: {integrity: sha512-jirYprAAJU1svjwSDVCzyVq+FrJpJd5CSxR/g2Ga/gZ0ZYZpcWjMS75KJl9y71K1mDN+tcx6s21CzCbB2R840g==}
     engines: {node: '>=20.0.0'}
     peerDependencies:
       '@modelcontextprotocol/sdk': ^1.11.0
@@ -799,7 +799,7 @@ snapshots:
   '@esbuild/win32-x64@0.25.8':
     optional: true
 
-  '@google/genai@1.12.0':
+  '@google/genai@1.14.0':
     dependencies:
       google-auth-library: 9.15.1
       ws: 8.18.3
