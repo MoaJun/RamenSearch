@@ -1,11 +1,12 @@
 
-import React, { useState, useMemo, useRef, Suspense, useCallback } from 'react';
+import React, { useState, useMemo, useRef, Suspense, useCallback, useEffect } from 'react';
 import { RamenShop, UserPost } from './types.ts';
 import { MOCK_RAMEN_SHOPS } from './constants.ts';
 import { Home, User } from 'lucide-react';
 import FeedbackButton from './components/FeedbackButton.tsx';
 import FeedbackModal from './components/FeedbackModal.tsx';
 import Toast from './components/Toast.tsx';
+import { dataMigrationService } from './utils/dataMigration.ts';
 
 // Lazy load heavy components for better initial load performance
 const RamenShopDetail = React.lazy(() => import('./components/RamenShopDetail.tsx'));
@@ -108,6 +109,68 @@ export default function App() {
       setToast({ message: '', show: false });
     }, 3000);
   };
+
+  // Add migration debugging functions to window for console testing
+  useEffect(() => {
+    (window as any).testDataMigration = async () => {
+      console.log('🔍 Starting data migration test...');
+      
+      try {
+        // Check if migration is needed
+        console.log('📋 Checking if migration is needed...');
+        const isNeeded = await dataMigrationService.isMigrationNeeded();
+        console.log(`Migration needed: ${isNeeded}`);
+        
+        // Compare current data
+        console.log('⚖️ Comparing local vs Supabase data...');
+        const comparison = await dataMigrationService.compareData();
+        console.log('Data comparison:', comparison);
+        
+        if (isNeeded) {
+          console.log('🚀 Starting migration process...');
+          const backup = await dataMigrationService.createBackup();
+          console.log('Backup created:', backup);
+          
+          const result = await dataMigrationService.migrateToSupabase();
+          console.log('Migration result:', result);
+          
+          if (result.success) {
+            console.log('✅ Migration completed successfully!');
+            showToast('データ移行が完了しました！');
+          } else {
+            console.log('❌ Migration failed:', result.errors);
+            showToast('データ移行に失敗しました');
+          }
+        } else {
+          console.log('ℹ️ No migration needed');
+          showToast('移行するデータがありません');
+        }
+        
+        // Final comparison
+        console.log('🔍 Final data comparison...');
+        const finalComparison = await dataMigrationService.compareData();
+        console.log('Final comparison:', finalComparison);
+        
+      } catch (error) {
+        console.error('Migration test failed:', error);
+        showToast('テストに失敗しました');
+      }
+    };
+    
+    // Add other debug functions
+    (window as any).checkSupabaseConnection = async () => {
+      try {
+        const comparison = await dataMigrationService.compareData();
+        console.log('Supabase connection test:', comparison);
+        showToast('接続テストが完了しました');
+      } catch (error) {
+        console.error('Connection test failed:', error);
+        showToast('接続テストに失敗しました');
+      }
+    };
+
+    console.log('🎯 Migration test ready! Call testDataMigration() or checkSupabaseConnection() in console.');
+  }, []);
 
   const handleFeedbackSubmit = (feedbackData: { type: string; details: string; screenshot?: string }) => {
     console.log("--- Feedback Submitted ---");

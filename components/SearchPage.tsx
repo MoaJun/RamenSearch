@@ -3,6 +3,7 @@ import { RamenShop } from '../types.ts';
 import RamenShopListItem from './RamenShopListItem.tsx';
 import { ArrowDownUp, MapPin, LocateFixed } from 'lucide-react';
 import RamenShopListItemSkeleton from './RamenShopListItemSkeleton.tsx';
+import { loadGoogleMaps } from '../lib/googleMaps';
 
 interface SearchPageProps {
   onShopSelect: (shop: RamenShop) => void;
@@ -167,11 +168,21 @@ const SearchPage: React.FC<SearchPageProps> = ({
 
   const itemRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
-  // Google Maps APIがロードされた後にGeocoderを初期化
+  // Google Maps APIを確実にロードしてGeocoderを初期化
   useEffect(() => {
-    if (window.google && !geocoder) {
-      setGeocoder(new window.google.maps.Geocoder());
-    }
+    const initializeGoogleMaps = async () => {
+      try {
+        await loadGoogleMaps();
+        if (window.google && window.google.maps && !geocoder) {
+          setGeocoder(new window.google.maps.Geocoder());
+        }
+      } catch (error) {
+        console.error('Failed to load Google Maps API:', error);
+        alert('Google Maps APIの読み込みに失敗しました。APIキーを確認してください。');
+      }
+    };
+
+    initializeGoogleMaps();
   }, [geocoder]);
 
   // マップの初期化

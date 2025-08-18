@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { RamenShop } from '../types.ts';
+import { loadGoogleMaps } from '../lib/googleMaps';
 
 interface StoreMapProps {
   shop: RamenShop;
@@ -17,25 +18,15 @@ const StoreMap: React.FC<StoreMapProps> = ({ shop, apiKey }) => {
       return;
     }
 
-    const loadGoogleMaps = async () => {
-      // Check if Google Maps is already loaded
-      if (window.google && window.google.maps) {
-        initializeMap();
-        return;
+    const loadGoogleMapsAPI = async () => {
+      try {
+        await loadGoogleMaps(apiKey);
+        if (window.google && window.google.maps) {
+          initializeMap();
+        }
+      } catch (error) {
+        console.error('Failed to load Google Maps API:', error);
       }
-
-      // Load Google Maps API
-      const script = document.createElement('script');
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places&language=ja&region=JP`;
-      script.async = true;
-      script.defer = true;
-      script.onload = () => {
-        initializeMap();
-      };
-      script.onerror = () => {
-        console.error('Failed to load Google Maps API');
-      };
-      document.head.appendChild(script);
     };
 
     const initializeMap = () => {
@@ -87,7 +78,7 @@ const StoreMap: React.FC<StoreMapProps> = ({ shop, apiKey }) => {
       }
     };
 
-    loadGoogleMaps();
+    loadGoogleMapsAPI();
 
     // Cleanup function
     return () => {

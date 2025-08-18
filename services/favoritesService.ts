@@ -87,7 +87,7 @@ export class FavoritesService {
       throw new Error('Shop not found in favorites');
     }
 
-    favorites[favoriteIndex].personalNotes = notes;
+    favorites[favoriteIndex].personal_notes = notes;
     await favoritesCache.set(FAVORITES_KEY, favorites, USER_DATA_TTL);
   }
 

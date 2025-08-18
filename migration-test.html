@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>RamenSearch Data Migration Test</title>
+    <script type="module">
+        // Import modules
+        import { DataMigrationService } from './utils/dataMigration.ts';
+        
+        window.testDataMigration = async () => {
+            console.log('🔍 Starting data migration test...');
+            
+            const migrationService = new DataMigrationService();
+            
+            try {
+                // Check if migration is needed
+                console.log('📋 Checking if migration is needed...');
+                const isNeeded = await migrationService.isMigrationNeeded();
+                console.log(`Migration needed: ${isNeeded}`);
+                
+                // Compare current data
+                console.log('⚖️ Comparing local vs Supabase data...');
+                const comparison = await migrationService.compareData();
+                console.log('Data comparison:', comparison);
+                
+                if (isNeeded) {
+                    console.log('🚀 Starting migration process...');
+                    const backup = await migrationService.createBackup();
+                    console.log('Backup created:', backup);
+                    
+                    const result = await migrationService.migrateToSupabase();
+                    console.log('Migration result:', result);
+                    
+                    if (result.success) {
+                        console.log('✅ Migration completed successfully!');
+                    } else {
+                        console.log('❌ Migration failed:', result.errors);
+                    }
+                } else {
+                    console.log('ℹ️ No migration needed');
+                }
+                
+                // Final comparison
+                console.log('🔍 Final data comparison...');
+                const finalComparison = await migrationService.compareData();
+                console.log('Final comparison:', finalComparison);
+                
+            } catch (error) {
+                console.error('Migration test failed:', error);
+            }
+        };
+        
+        console.log('🎯 Migration test ready! Call window.testDataMigration() to start.');
+    </script>
+</head>
+<body>
+    <h1>RamenSearch Data Migration Test</h1>
+    <p>Open Developer Console and call <code>testDataMigration()</code> to test data migration.</p>
+    <button onclick="window.testDataMigration()">Run Migration Test</button>
+</body>
+</html>

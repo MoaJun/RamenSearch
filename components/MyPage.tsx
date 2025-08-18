@@ -96,10 +96,10 @@ const MyPage: React.FC<MyPageProps> = ({
             </span>
           </div>
 
-          {favorite.personalNotes && (
+          {favorite.personal_notes && (
             <div className="mt-2 p-2 bg-yellow-50 dark:bg-yellow-900/20 rounded text-sm">
               <MessageSquare className="w-4 h-4 inline mr-1" />
-              {favorite.personalNotes}
+              {favorite.personal_notes}
             </div>
           )}
 
