@@ -21,10 +21,10 @@
 
 #### デプロイプラットフォーム別の追加 Secrets:
 
-**Vercel使用の場合:**
-- `VERCEL_TOKEN`: Vercel API Token
-- `VERCEL_ORG_ID`: Vercel Organization ID
-- `VERCEL_PROJECT_ID`: Vercel Project ID
+**Vercel使用の場合（自動デプロイ有効）:**
+- `VERCEL_TOKEN`: Vercel Dashboard > Settings > Tokens で作成
+- `VERCEL_ORG_ID`: Vercel Dashboard > Settings > General から取得
+- `VERCEL_PROJECT_ID`: Vercel Project Settings > General から取得
 
 **Netlify使用の場合:**
 - `NETLIFY_AUTH_TOKEN`: Netlify Personal Access Token
