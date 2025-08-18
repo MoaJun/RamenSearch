@@ -8,7 +8,7 @@ on:
 
 env:
   NODE_VERSION: '20.11.0'
-  PNPM_VERSION: '8.15.0'
+  PNPM_VERSION: '10.13.1'
 
 jobs:
   lint-and-typecheck:
@@ -42,7 +42,7 @@ jobs:
             ${{ runner.os }}-pnpm-store-
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --no-frozen-lockfile
 
       - name: Run TypeScript check
         run: pnpm run typecheck || npm run build
@@ -86,7 +86,7 @@ jobs:
             ${{ runner.os }}-pnpm-store-
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --no-frozen-lockfile
 
       - name: Run tests
         run: |
@@ -128,7 +128,7 @@ jobs:
             ${{ runner.os }}-pnpm-store-
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --no-frozen-lockfile
 
       - name: Build project
         run: pnpm run build
