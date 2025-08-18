@@ -46,6 +46,7 @@
 Repository Settings > Actions > General で以下を確認:
 - Actions permissions: "Allow all actions and reusable workflows"
 - Workflow permissions: "Read and write permissions"
+- Allow GitHub Actions to create and approve pull requests: ✅ (チェック必須)
 
 ## ブランチ保護ルール（推奨）
 
