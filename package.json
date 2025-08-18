@@ -30,5 +30,9 @@
     "rollup-plugin-visualizer": "^6.0.3",
     "typescript": "~5.7.2",
     "vite": "^6.2.0"
+  },
+  "engines": {
+    "node": "20.x",
+    "pnpm": "10.x"
   }
 }
