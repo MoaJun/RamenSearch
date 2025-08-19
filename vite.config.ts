@@ -37,17 +37,18 @@ export default defineConfig(({ mode }) => {
         // Report compressed size
         reportCompressedSize: true,
         rollupOptions: {
-          output: {
-            manualChunks: (id) => {
+          manualChunks: (id) => {
               // Core React libraries
               if (id.includes('react') || id.includes('react-dom')) {
                 return 'vendor';
               }
               
-              // Google services - lazy loaded
-              if (id.includes('@google/genai')) {
-                return 'ai';
+              // Lazy-loaded Gemini service only
+              if (id.includes('lazyGeminiService')) {
+                return 'ai-lazy';
               }
+              
+              // Google Maps (keep separate)
               if (id.includes('@googlemaps/js-api-loader') || id.includes('@googlemaps/markerclusterer')) {
                 return 'google-maps';
               }
@@ -57,8 +58,9 @@ export default defineConfig(({ mode }) => {
                 return 'ui';
               }
               
-              // Our utilities and services
-              if (id.includes('/utils/') || id.includes('/services/')) {
+              // Our utilities and services (excluding gemini services)
+              if ((id.includes('/utils/') || id.includes('/services/')) && 
+                  !id.includes('geminiService') && !id.includes('lazyGeminiService')) {
                 return 'utils';
               }
               
@@ -72,11 +74,6 @@ export default defineConfig(({ mode }) => {
                 return 'vendor';
               }
             },
-            // Optimize file names for caching
-            entryFileNames: 'assets/[name]-[hash].js',
-            chunkFileNames: 'assets/[name]-[hash].js',
-            assetFileNames: 'assets/[name]-[hash].[ext]'
-          },
           // Optimize imports
           treeshake: {
             moduleSideEffects: false,

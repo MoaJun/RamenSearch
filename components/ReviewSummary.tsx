@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Review, ReviewSummaryData } from '../types.ts';
-import { generateReviewSummary } from '../services/geminiService.ts';
+import { generateReviewSummary } from '../services/lazyGeminiService.ts';
 import { ThumbsUp, ThumbsDown, Lightbulb } from 'lucide-react';
 
 interface ReviewSummaryProps {

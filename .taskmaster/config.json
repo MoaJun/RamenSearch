@@ -1,8 +1,8 @@
 {
   "models": {
     "main": {
-      "provider": "anthropic",
-      "modelId": "claude-sonnet-4-20250514",
+      "provider": "ollama",
+      "modelId": "qwen3-4b:latest",
       "maxTokens": 64000,
       "temperature": 0.2
     },
@@ -13,8 +13,8 @@
       "temperature": 0.1
     },
     "fallback": {
-      "provider": "anthropic",
-      "modelId": "claude-3-7-sonnet-20250219",
+      "provider": "ollama",
+      "modelId": "llama3.3:latest",
       "maxTokens": 120000,
       "temperature": 0.2
     }

@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Review } from '../types.ts';
-import { generateFeatureTags } from '../services/geminiService.ts';
+import { generateFeatureTags } from '../services/lazyGeminiService.ts';
 import { Tag } from 'lucide-react';
 
 interface FeatureTagsProps {
