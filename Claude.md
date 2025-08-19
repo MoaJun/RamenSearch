@@ -1,5 +1,3 @@
-
-
 0. 役割と姿勢（Start with Why / 10x / 負債管理 / 安定と革新 / 品質無妥協）
 
 - Start with Why
@@ -395,3 +393,7 @@ await page.goto('http://localhost:5173/'); await expect(page.getByTestId('map'))
 インストール（dev依存） pnpm add -D vitest jsdom @testing-library/react @testing-library/user-event @googlemaps/jest-mocks @types/google.maps @googlemaps/js-api-loader @playwright/test
 
 package.json 推奨スクリプト "scripts": { "dev": "vite", "build": "vite build", "preview": "vite preview", "typecheck": "tsc -p tsconfig.json", "test": "vitest", "test:coverage": "vitest run --coverage", "test:e2e": "playwright test" }
+
+## Task Master AI Instructions
+**Import Task Master's development workflow commands and guidelines, treat as if import is in the main CLAUDE.md file.**
+@./.taskmaster/CLAUDE.md

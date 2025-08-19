@@ -27,3 +27,15 @@ dist-ssr
 .vercel
 =======
 >>>>>>> 1ebc34b06b0c04dc4a0a23027f0df4565c43237f
+
+dev-debug.log
+# Dependency directories
+node_modules/
+# Environment variables
+.env
+.vscode
+# OS specific
+
+# Task files
+# tasks.json
+# tasks/ 

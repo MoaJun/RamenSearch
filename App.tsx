@@ -1,11 +1,13 @@
 
-import React, { useState, useMemo, useRef, Suspense, useCallback } from 'react';
+import React, { useState, useMemo, useRef, Suspense, useCallback, useEffect } from 'react';
 import { RamenShop, UserPost } from './types.ts';
 import { MOCK_RAMEN_SHOPS } from './constants.ts';
 import { Home, User } from 'lucide-react';
 import FeedbackButton from './components/FeedbackButton.tsx';
 import FeedbackModal from './components/FeedbackModal.tsx';
 import Toast from './components/Toast.tsx';
+import { dataMigrationService } from './utils/dataMigration.ts';
+import { ErrorBoundary } from './components/ErrorBoundary.tsx';
 
 // Lazy load heavy components for better initial load performance
 const RamenShopDetail = React.lazy(() => import('./components/RamenShopDetail.tsx'));
@@ -108,6 +110,68 @@ export default function App() {
       setToast({ message: '', show: false });
     }, 3000);
   };
+
+  // Add migration debugging functions to window for console testing
+  useEffect(() => {
+    (window as any).testDataMigration = async () => {
+      console.log('🔍 Starting data migration test...');
+      
+      try {
+        // Check if migration is needed
+        console.log('📋 Checking if migration is needed...');
+        const isNeeded = await dataMigrationService.isMigrationNeeded();
+        console.log(`Migration needed: ${isNeeded}`);
+        
+        // Compare current data
+        console.log('⚖️ Comparing local vs Supabase data...');
+        const comparison = await dataMigrationService.compareData();
+        console.log('Data comparison:', comparison);
+        
+        if (isNeeded) {
+          console.log('🚀 Starting migration process...');
+          const backup = await dataMigrationService.createBackup();
+          console.log('Backup created:', backup);
+          
+          const result = await dataMigrationService.migrateToSupabase();
+          console.log('Migration result:', result);
+          
+          if (result.success) {
+            console.log('✅ Migration completed successfully!');
+            showToast('データ移行が完了しました！');
+          } else {
+            console.log('❌ Migration failed:', result.errors);
+            showToast('データ移行に失敗しました');
+          }
+        } else {
+          console.log('ℹ️ No migration needed');
+          showToast('移行するデータがありません');
+        }
+        
+        // Final comparison
+        console.log('🔍 Final data comparison...');
+        const finalComparison = await dataMigrationService.compareData();
+        console.log('Final comparison:', finalComparison);
+        
+      } catch (error) {
+        console.error('Migration test failed:', error);
+        showToast('テストに失敗しました');
+      }
+    };
+    
+    // Add other debug functions
+    (window as any).checkSupabaseConnection = async () => {
+      try {
+        const comparison = await dataMigrationService.compareData();
+        console.log('Supabase connection test:', comparison);
+        showToast('接続テストが完了しました');
+      } catch (error) {
+        console.error('Connection test failed:', error);
+        showToast('接続テストに失敗しました');
+      }
+    };
+
+    console.log('🎯 Migration test ready! Call testDataMigration() or checkSupabaseConnection() in console.');
+  }, []);
 
   const handleFeedbackSubmit = (feedbackData: { type: string; details: string; screenshot?: string }) => {
     console.log("--- Feedback Submitted ---");
@@ -234,53 +298,55 @@ export default function App() {
   };
 
   return (
-    <div className="flex flex-col min-h-screen bg-gray-950 text-gray-200">
-      <header className="bg-gray-900 border-b border-gray-800 text-white shadow-md sticky top-0 z-30">
-        <div className="container mx-auto max-w-7xl px-4 py-3 flex items-center justify-between">
-            <div className="flex items-center gap-2 cursor-pointer" onClick={() => { setCurrentView('search'); setSelectedShop(null); }}>
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-red-500">
-                    <path d="M4 21V19C4 17.8954 4.89543 17 6 17H10C11.1046 17 12 17.8954 12 19V21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                    <path d="M12 21V19C12 17.8954 12.8954 17 14 17H18C19.1046 17 20 17.8954 20 19V21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                    <path d="M7 17V11C7 8.23858 9.23858 6 12 6C14.7614 6 17 8.23858 17 11V17" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                    <path d="M12 6V3M12 3L10 4M12 3L14 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-                <h1 className="text-2xl font-bold tracking-wider">Ramen Compass</h1>
-            </div>
-        </div>
-      </header>
-
-      <main className="flex-grow w-full max-w-7xl mx-auto">
-        {renderContent()}
-      </main>
-
-      {!selectedShop && (
-         <footer className="sticky bottom-0 bg-gray-900/80 backdrop-blur-sm border-t border-gray-800 shadow-t-lg z-20">
-          <div className="container mx-auto max-w-7xl flex justify-around">
-            <button
-              onClick={() => { setCurrentView('search'); setSelectedShop(null); }}
-              className={`flex flex-col items-center justify-center w-full py-2 text-sm font-medium transition-colors ${currentView === 'search' ? 'text-red-500' : 'text-gray-400 hover:text-red-500'}`}
-            >
-              <Home className="h-6 w-6 mb-0.5" />
-              検索
-            </button>
-            <button
-              onClick={() => { setCurrentView('mypage'); setSelectedShop(null); }}
-              className={`flex flex-col items-center justify-center w-full py-2 text-sm font-medium transition-colors ${currentView === 'mypage' ? 'text-red-500' : 'text-gray-400 hover:text-red-500'}`}
-            >
-              <User className="h-6 w-6 mb-0.5" />
-              マイページ
-            </button>
+    <ErrorBoundary>
+      <div className="flex flex-col min-h-screen bg-gray-950 text-gray-200">
+        <header className="bg-gray-900 border-b border-gray-800 text-white shadow-md sticky top-0 z-30">
+          <div className="container mx-auto max-w-7xl px-4 py-3 flex items-center justify-between">
+              <div className="flex items-center gap-2 cursor-pointer" onClick={() => { setCurrentView('search'); setSelectedShop(null); }}>
+                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-red-500">
+                      <path d="M4 21V19C4 17.8954 4.89543 17 6 17H10C11.1046 17 12 17.8954 12 19V21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      <path d="M12 21V19C12 17.8954 12.8954 17 14 17H18C19.1046 17 20 17.8954 20 19V21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      <path d="M7 17V11C7 8.23858 9.23858 6 12 6C14.7614 6 17 8.23858 17 11V17" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      <path d="M12 6V3M12 3L10 4M12 3L14 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                  <h1 className="text-2xl font-bold tracking-wider">Ramen Compass</h1>
+              </div>
           </div>
-         </footer>
-      )}
+        </header>
 
-      <FeedbackButton onOpen={() => setIsFeedbackModalOpen(true)} />
-      <FeedbackModal 
-        isOpen={isFeedbackModalOpen}
-        onClose={() => setIsFeedbackModalOpen(false)}
-        onSubmit={handleFeedbackSubmit}
-      />
-      <Toast message={toast.message} show={toast.show} />
-    </div>
+        <main className="flex-grow w-full max-w-7xl mx-auto">
+          {renderContent()}
+        </main>
+
+        {!selectedShop && (
+           <footer className="sticky bottom-0 bg-gray-900/80 backdrop-blur-sm border-t border-gray-800 shadow-t-lg z-20">
+            <div className="container mx-auto max-w-7xl flex justify-around">
+              <button
+                onClick={() => { setCurrentView('search'); setSelectedShop(null); }}
+                className={`flex flex-col items-center justify-center w-full py-2 text-sm font-medium transition-colors ${currentView === 'search' ? 'text-red-500' : 'text-gray-400 hover:text-red-500'}`}
+              >
+                <Home className="h-6 w-6 mb-0.5" />
+                検索
+              </button>
+              <button
+                onClick={() => { setCurrentView('mypage'); setSelectedShop(null); }}
+                className={`flex flex-col items-center justify-center w-full py-2 text-sm font-medium transition-colors ${currentView === 'mypage' ? 'text-red-500' : 'text-gray-400 hover:text-red-500'}`}
+              >
+                <User className="h-6 w-6 mb-0.5" />
+                マイページ
+              </button>
+            </div>
+           </footer>
+        )}
+
+        <FeedbackButton onOpen={() => setIsFeedbackModalOpen(true)} />
+        <FeedbackModal 
+          isOpen={isFeedbackModalOpen}
+          onClose={() => setIsFeedbackModalOpen(false)}
+          onSubmit={handleFeedbackSubmit}
+        />
+        <Toast message={toast.message} show={toast.show} />
+      </div>
+    </ErrorBoundary>
   );
 }

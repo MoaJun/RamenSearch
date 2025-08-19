@@ -1,0 +1,7 @@
+{
+  "buildCommand": "pnpm install && pnpm run build",
+  "outputDirectory": "dist",
+  "installCommand": "pnpm install --include=dev",
+  "framework": "vite",
+  "nodejs": "20.x"
+}

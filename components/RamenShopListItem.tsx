@@ -48,6 +48,7 @@ const ReviewItem: React.FC<{ review: Review }> = ({ review }) => (
 );
 
 const RamenShopListItem: React.FC<RamenShopListItemProps> = ({ shop, onSelect, index, isHovered, isHighlighted, onMouseEnter, onMouseLeave, onClick }) => {
+  console.log('RamenShopListItem received shop:', shop); // DEBUG: Added missing log
   const [isReviewsOpen, setIsReviewsOpen] = useState(false);
   const [isSummaryOpen, setIsSummaryOpen] = useState(false);
   const [reviewPage, setReviewPage] = useState(0);

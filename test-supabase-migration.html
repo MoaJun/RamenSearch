@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Supabase Integration & Migration Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+        .section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        button { padding: 10px 15px; margin: 5px; background: #4CAF50; color: white; border: none; border-radius: 3px; cursor: pointer; }
+        button:hover { background: #45a049; }
+        .error { color: red; }
+        .success { color: green; }
+        .info { color: blue; }
+        pre { background: #f5f5f5; padding: 10px; border-radius: 3px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>RamenSearch Supabase Integration Test</h1>
+    
+    <div class="section">
+        <h2>1. Environment Check</h2>
+        <button onclick="checkEnvironment()">Check Environment Variables</button>
+        <div id="env-status"></div>
+    </div>
+
+    <div class="section">
+        <h2>2. Supabase Connection Test</h2>
+        <button onclick="testSupabaseConnection()">Test Connection</button>
+        <div id="connection-status"></div>
+    </div>
+
+    <div class="section">
+        <h2>3. localStorage Data Check</h2>
+        <button onclick="checkLocalStorageData()">Check Local Data</button>
+        <div id="local-data-status"></div>
+    </div>
+
+    <div class="section">
+        <h2>4. Migration Test</h2>
+        <button onclick="checkMigrationNeeded()">Check if Migration Needed</button>
+        <button onclick="runMigration()">Run Migration</button>
+        <button onclick="compareData()">Compare Data</button>
+        <div id="migration-status"></div>
+    </div>
+
+    <div class="section">
+        <h2>5. Basic CRUD Test</h2>
+        <button onclick="testCRUDOperations()">Test CRUD Operations</button>
+        <div id="crud-status"></div>
+    </div>
+
+    <script type="module">
+        // Import environment variables
+        window.ENV = {
+            SUPABASE_URL: 'https://pkbamgvybpisgznwpkie.supabase.co',
+            SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBrYmFtZ3Z5YnBpc2d6bndwa2llIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzQxNTMzNzYsImV4cCI6MjA0OTcyOTM3Nn0.7QoP0xXJ6r-N9Uy9wXw7P6Xy9QhKLKQqY6L0VfYJ5v4'
+        };
+
+        // Basic Supabase client setup
+        async function createSupabaseClient() {
+            try {
+                const { createClient } = await import('https://cdn.skypack.dev/@supabase/supabase-js');
+                return createClient(window.ENV.SUPABASE_URL, window.ENV.SUPABASE_ANON_KEY);
+            } catch (error) {
+                console.error('Failed to create Supabase client:', error);
+                throw error;
+            }
+        }
+
+        window.checkEnvironment = function() {
+            const status = document.getElementById('env-status');
+            status.innerHTML = `
+                <div class="info">Environment variables:</div>
+                <pre>
+SUPABASE_URL: ${window.ENV.SUPABASE_URL ? 'Set ✓' : 'Missing ✗'}
+SUPABASE_ANON_KEY: ${window.ENV.SUPABASE_ANON_KEY ? 'Set ✓' : 'Missing ✗'}
+                </pre>
+            `;
+        };
+
+        window.testSupabaseConnection = async function() {
+            const status = document.getElementById('connection-status');
+            status.innerHTML = '<div class="info">Testing connection...</div>';
+            
+            try {
+                const supabase = await createSupabaseClient();
+                
+                // Test connection by querying system table
+                const { data, error } = await supabase
+                    .from('favorites')
+                    .select('count')
+                    .limit(1);
+                
+                if (error) {
+                    throw error;
+                }
+                
+                status.innerHTML = '<div class="success">✓ Connection successful!</div>';
+            } catch (error) {
+                status.innerHTML = `<div class="error">✗ Connection failed: ${error.message}</div>`;
+            }
+        };
+
+        window.checkLocalStorageData = function() {
+            const status = document.getElementById('local-data-status');
+            
+            try {
+                const favorites = JSON.parse(localStorage.getItem('ramen-favorites') || '[]');
+                const visits = JSON.parse(localStorage.getItem('visit-history') || '[]');
+                
+                status.innerHTML = `
+                    <div class="info">localStorage data found:</div>
+                    <pre>
+Favorites: ${favorites.length} items
+Visit History: ${visits.length} items
+                    </pre>
+                    ${favorites.length > 0 ? `<pre>Sample favorite: ${JSON.stringify(favorites[0], null, 2)}</pre>` : ''}
+                `;
+            } catch (error) {
+                status.innerHTML = `<div class="error">Error reading localStorage: ${error.message}</div>`;
+            }
+        };
+
+        window.checkMigrationNeeded = async function() {
+            const status = document.getElementById('migration-status');
+            status.innerHTML = '<div class="info">Checking migration status...</div>';
+            
+            try {
+                const supabase = await createSupabaseClient();
+                
+                // Check local data
+                const favorites = JSON.parse(localStorage.getItem('ramen-favorites') || '[]');
+                const visits = JSON.parse(localStorage.getItem('visit-history') || '[]');
+                
+                // Check Supabase data
+                const { data: supabaseFavorites, error: favError } = await supabase
+                    .from('favorites')
+                    .select('*');
+                
+                const { data: supabaseVisits, error: visitError } = await supabase
+                    .from('visit_history')
+                    .select('*');
+                
+                if (favError || visitError) {
+                    throw new Error(favError?.message || visitError?.message);
+                }
+                
+                const localCount = favorites.length + visits.length;
+                const supabaseCount = (supabaseFavorites?.length || 0) + (supabaseVisits?.length || 0);
+                
+                const needsMigration = localCount > 0 && supabaseCount === 0;
+                
+                status.innerHTML = `
+                    <div class="info">Migration Status:</div>
+                    <pre>
+Local data: ${favorites.length} favorites, ${visits.length} visits
+Supabase data: ${supabaseFavorites?.length || 0} favorites, ${supabaseVisits?.length || 0} visits
+Migration needed: ${needsMigration ? 'Yes ⚠️' : 'No ✓'}
+                    </pre>
+                `;
+            } catch (error) {
+                status.innerHTML = `<div class="error">Error checking migration: ${error.message}</div>`;
+            }
+        };
+
+        window.runMigration = async function() {
+            const status = document.getElementById('migration-status');
+            status.innerHTML = '<div class="info">Running migration...</div>';
+            
+            try {
+                const supabase = await createSupabaseClient();
+                const favorites = JSON.parse(localStorage.getItem('ramen-favorites') || '[]');
+                const visits = JSON.parse(localStorage.getItem('visit-history') || '[]');
+                
+                let migratedFavorites = 0;
+                let migratedVisits = 0;
+                const errors = [];
+                
+                // Migrate favorites
+                for (const favorite of favorites) {
+                    try {
+                        const { error } = await supabase
+                            .from('favorites')
+                            .insert({
+                                user_id: 'test-user',
+                                place_id: favorite.placeId,
+                                name: favorite.name,
+                                address: favorite.address,
+                                rating: favorite.rating,
+                                personal_notes: favorite.personalNotes,
+                                tags: favorite.tags || []
+                            });
+                        
+                        if (error) throw error;
+                        migratedFavorites++;
+                    } catch (error) {
+                        errors.push(`Favorite ${favorite.name}: ${error.message}`);
+                    }
+                }
+                
+                // Migrate visits
+                for (const visit of visits) {
+                    try {
+                        const { error } = await supabase
+                            .from('visit_history')
+                            .insert({
+                                user_id: 'test-user',
+                                place_id: visit.placeId,
+                                shop_name: visit.shopName || 'Unknown Shop',
+                                visit_date: visit.visitDate,
+                                rating: visit.rating,
+                                notes: visit.personalReview,
+                                photos: visit.photos || []
+                            });
+                        
+                        if (error) throw error;
+                        migratedVisits++;
+                    } catch (error) {
+                        errors.push(`Visit ${visit.placeId}: ${error.message}`);
+                    }
+                }
+                
+                status.innerHTML = `
+                    <div class="${errors.length === 0 ? 'success' : 'info'}">Migration completed:</div>
+                    <pre>
+Migrated favorites: ${migratedFavorites}/${favorites.length}
+Migrated visits: ${migratedVisits}/${visits.length}
+Errors: ${errors.length}
+                    </pre>
+                    ${errors.length > 0 ? `<div class="error">Errors:\n${errors.join('\n')}</div>` : ''}
+                `;
+            } catch (error) {
+                status.innerHTML = `<div class="error">Migration failed: ${error.message}</div>`;
+            }
+        };
+
+        window.compareData = async function() {
+            const status = document.getElementById('migration-status');
+            status.innerHTML = '<div class="info">Comparing data...</div>';
+            
+            try {
+                const supabase = await createSupabaseClient();
+                
+                // Get local data
+                const localFavorites = JSON.parse(localStorage.getItem('ramen-favorites') || '[]');
+                const localVisits = JSON.parse(localStorage.getItem('visit-history') || '[]');
+                
+                // Get Supabase data
+                const { data: supabaseFavorites } = await supabase.from('favorites').select('*');
+                const { data: supabaseVisits } = await supabase.from('visit_history').select('*');
+                
+                status.innerHTML = `
+                    <div class="info">Data Comparison:</div>
+                    <pre>
+Local:
+  Favorites: ${localFavorites.length}
+  Visits: ${localVisits.length}
+
+Supabase:
+  Favorites: ${supabaseFavorites?.length || 0}
+  Visits: ${supabaseVisits?.length || 0}
+                    </pre>
+                `;
+            } catch (error) {
+                status.innerHTML = `<div class="error">Comparison failed: ${error.message}</div>`;
+            }
+        };
+
+        window.testCRUDOperations = async function() {
+            const status = document.getElementById('crud-status');
+            status.innerHTML = '<div class="info">Testing CRUD operations...</div>';
+            
+            try {
+                const supabase = await createSupabaseClient();
+                const testPlaceId = 'test-place-' + Date.now();
+                
+                // Create
+                const { data: insertData, error: insertError } = await supabase
+                    .from('favorites')
+                    .insert({
+                        user_id: 'test-user',
+                        place_id: testPlaceId,
+                        name: 'Test Ramen Shop',
+                        address: 'Test Address',
+                        rating: 4.5
+                    })
+                    .select();
+                
+                if (insertError) throw insertError;
+                
+                // Read
+                const { data: readData, error: readError } = await supabase
+                    .from('favorites')
+                    .select('*')
+                    .eq('place_id', testPlaceId);
+                
+                if (readError) throw readError;
+                
+                // Update
+                const { error: updateError } = await supabase
+                    .from('favorites')
+                    .update({ rating: 5.0 })
+                    .eq('place_id', testPlaceId);
+                
+                if (updateError) throw updateError;
+                
+                // Delete
+                const { error: deleteError } = await supabase
+                    .from('favorites')
+                    .delete()
+                    .eq('place_id', testPlaceId);
+                
+                if (deleteError) throw deleteError;
+                
+                status.innerHTML = `
+                    <div class="success">✓ All CRUD operations successful!</div>
+                    <pre>
+Create: ✓ Inserted test record
+Read: ✓ Found ${readData.length} record(s)
+Update: ✓ Updated rating
+Delete: ✓ Deleted test record
+                    </pre>
+                `;
+            } catch (error) {
+                status.innerHTML = `<div class="error">CRUD test failed: ${error.message}</div>`;
+            }
+        };
+    </script>
+</body>
+</html>

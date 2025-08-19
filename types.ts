@@ -52,22 +52,29 @@ export interface ReviewSummaryData {
 }
 
 export interface FavoriteShop {
-  placeId: string;
+  id?: string; // UUID for Supabase
+  user_id?: string; // User identifier for Supabase
+  placeId: string; // place_id in Supabase
   name: string;
   address: string;
   rating: number;
-  savedAt: Date;
-  personalNotes?: string;
-  visitCount?: number;
-  lastVisit?: Date;
+  savedAt: Date; // saved_at in Supabase
+  personal_notes?: string; // renamed from personalNotes for Supabase compatibility
+  visitCount?: number; // visit_count in Supabase
+  lastVisit?: Date; // last_visit in Supabase
   tags?: string[];
+  created_at?: Date; // Supabase timestamp
 }
 
 export interface VisitHistory {
-  placeId: string;
-  visitDate: Date;
+  id?: string; // UUID for Supabase
+  user_id?: string; // User identifier for Supabase
+  placeId: string; // place_id in Supabase
+  shop_name?: string; // Added for Supabase compatibility
+  visitDate: Date; // visit_date in Supabase
   rating?: number;
-  personalReview?: string;
+  notes?: string; // renamed from personalReview for Supabase compatibility
   photos?: string[];
-  spend?: number;
+  created_at?: Date; // Supabase timestamp
+  // Removed: spend (not in Supabase table)
 }
