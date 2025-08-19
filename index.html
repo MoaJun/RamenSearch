@@ -20,9 +20,97 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@400;700&display=swap" rel="stylesheet">
     <style>
+      /* [CRITICAL-CSS-001] Above-the-fold critical styles */
       body {
         font-family: 'BIZ UDPGothic', sans-serif;
+        margin: 0;
+        padding: 0;
+        min-height: 100vh;
+        transition: background-color 0.3s, color 0.3s;
       }
+      
+      /* Dark mode base styles */
+      .dark {
+        background-color: rgb(3, 7, 18); /* bg-gray-950 */
+        color: rgb(229, 231, 235); /* text-gray-200 */
+      }
+      
+      /* Container and layout */
+      .container {
+        width: 100%;
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 0 1rem;
+      }
+      
+      /* Header critical styles */
+      .header {
+        background-color: rgb(3, 7, 18); /* bg-gray-950 */
+        color: rgb(229, 231, 235); /* text-gray-200 */
+        padding: 1rem 0;
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        border-bottom: 1px solid rgb(55, 65, 81); /* border-gray-700 */
+      }
+      
+      .header-title {
+        font-size: 1.5rem;
+        font-weight: 700;
+        margin: 0;
+        text-align: center;
+      }
+      
+      /* Search controls critical styles */
+      .search-section {
+        background-color: rgb(17, 24, 39); /* bg-gray-900 */
+        border-radius: 0.5rem;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        padding: 1.5rem;
+        margin: 1rem 0;
+      }
+      
+      .search-input {
+        width: 100%;
+        background-color: rgb(31, 41, 55); /* bg-gray-800 */
+        border: 1px solid rgb(55, 65, 81); /* border-gray-700 */
+        border-radius: 0.375rem;
+        padding: 0.75rem;
+        color: rgb(243, 244, 246); /* text-gray-100 */
+        font-size: 1rem;
+      }
+      
+      .search-input::placeholder {
+        color: rgb(156, 163, 175); /* text-gray-400 */
+      }
+      
+      .search-button {
+        background-color: rgb(59, 130, 246); /* bg-blue-600 */
+        color: white;
+        border: none;
+        border-radius: 0.375rem;
+        padding: 0.75rem 1rem;
+        cursor: pointer;
+        font-size: 1rem;
+        font-weight: 500;
+        margin-top: 0.75rem;
+        width: 100%;
+      }
+      
+      .search-button:hover {
+        background-color: rgb(37, 99, 235); /* bg-blue-700 */
+      }
+      
+      /* Grid layout for large screens */
+      @media (min-width: 1024px) {
+        .main-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 1rem;
+        }
+      }
+      
+      /* Animations (existing) */
       @keyframes slide-in-bottom {
         0% {
           transform: translateY(20px);

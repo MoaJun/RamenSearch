@@ -32,6 +32,7 @@ export default function App() {
   const [isFiltering, setIsFiltering] = useState(false);
   const [hoveredPlaceId, setHoveredPlaceId] = useState<string | null>(null);
   const [highlightedPlaceId, setHighlightedPlaceId] = useState<string | null>(null);
+  const [showMap, setShowMap] = useState<boolean>(false); // Map lazy loading toggle
   const userLocation = useRef<google.maps.LatLngLiteral | null>(null);
 
   // User-specific data states
@@ -253,6 +254,8 @@ export default function App() {
               setHoveredPlaceId={setHoveredPlaceId}
               highlightedPlaceId={highlightedPlaceId}
               setHighlightedPlaceId={setHighlightedPlaceId}
+              showMap={showMap}
+              setShowMap={setShowMap}
             />
           </Suspense>
         );
@@ -291,6 +294,8 @@ export default function App() {
               setHoveredPlaceId={setHoveredPlaceId}
               highlightedPlaceId={highlightedPlaceId}
               setHighlightedPlaceId={setHighlightedPlaceId}
+              showMap={showMap}
+              setShowMap={setShowMap}
             />
           </Suspense>
         );
