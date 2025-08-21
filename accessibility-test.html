@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>アクセシビリティテスト - RamenSearch</title>
+    <script src="https://unpkg.com/axe-core@4.10.3/axe.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .results {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f5f5f5;
+            border-radius: 5px;
+        }
+        .violation {
+            background: #ffebee;
+            padding: 10px;
+            margin: 10px 0;
+            border-left: 4px solid #f44336;
+        }
+        .pass {
+            background: #e8f5e8;
+            padding: 10px;
+            margin: 10px 0;
+            border-left: 4px solid #4caf50;
+        }
+        iframe {
+            width: 100%;
+            height: 600px;
+            border: 1px solid #ccc;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔍 RamenSearch アクセシビリティテスト</h1>
+    
+    <div class="test-section">
+        <h2>テスト対象</h2>
+        <p>RamenSearchアプリケーション (http://localhost:5175)</p>
+        <iframe id="testFrame" src="http://localhost:5175"></iframe>
+    </div>
+
+    <div class="test-section">
+        <h2>テスト実行</h2>
+        <button id="runTest" onclick="runAccessibilityTest()">🚀 axe-coreテスト実行</button>
+        <button id="runLighthouse" onclick="suggestLighthouse()">💡 Lighthouseテスト（手動）</button>
+    </div>
+
+    <div id="results" class="results" style="display: none;">
+        <h2>📊 テスト結果</h2>
+        <div id="summary"></div>
+        <div id="violations"></div>
+        <div id="passes"></div>
+    </div>
+
+    <script>
+        async function runAccessibilityTest() {
+            const button = document.getElementById('runTest');
+            const results = document.getElementById('results');
+            const summary = document.getElementById('summary');
+            const violations = document.getElementById('violations');
+            const passes = document.getElementById('passes');
+
+            button.disabled = true;
+            button.textContent = '🔄 テスト実行中...';
+
+            try {
+                // iframe内のコンテンツでaxe-coreを実行
+                const frame = document.getElementById('testFrame');
+                const frameDoc = frame.contentDocument || frame.contentWindow.document;
+                
+                // フレーム内でaxe-coreを実行
+                const axeResults = await frame.contentWindow.axe.run();
+
+                // 結果を表示
+                results.style.display = 'block';
+                
+                // サマリー
+                summary.innerHTML = `
+                    <h3>📈 サマリー</h3>
+                    <ul>
+                        <li><strong>違反:</strong> ${axeResults.violations.length}件</li>
+                        <li><strong>通過:</strong> ${axeResults.passes.length}件</li>
+                        <li><strong>不完全:</strong> ${axeResults.incomplete.length}件</li>
+                        <li><strong>非適用:</strong> ${axeResults.inapplicable.length}件</li>
+                    </ul>
+                `;
+
+                // 違反の詳細
+                violations.innerHTML = '<h3>❌ 検出された問題</h3>';
+                if (axeResults.violations.length === 0) {
+                    violations.innerHTML += '<div class="pass">✅ アクセシビリティ違反は検出されませんでした！</div>';
+                } else {
+                    axeResults.violations.forEach(violation => {
+                        violations.innerHTML += `
+                            <div class="violation">
+                                <h4>${violation.id}: ${violation.description}</h4>
+                                <p><strong>影響度:</strong> ${violation.impact}</p>
+                                <p><strong>タグ:</strong> ${violation.tags.join(', ')}</p>
+                                <p><strong>要素数:</strong> ${violation.nodes.length}個</p>
+                                <details>
+                                    <summary>詳細を表示</summary>
+                                    <ul>
+                                        ${violation.nodes.map(node => 
+                                            `<li>${node.target.join(' ')}: ${node.failureSummary}</li>`
+                                        ).join('')}
+                                    </ul>
+                                </details>
+                            </div>
+                        `;
+                    });
+                }
+
+                // 通過した項目（一部のみ表示）
+                passes.innerHTML = '<h3>✅ 通過した項目（主要項目）</h3>';
+                const importantPasses = axeResults.passes.filter(pass => 
+                    ['button-name', 'link-name', 'image-alt', 'label', 'keyboard', 'focus-order-semantics'].includes(pass.id)
+                );
+                
+                if (importantPasses.length > 0) {
+                    importantPasses.forEach(pass => {
+                        passes.innerHTML += `
+                            <div class="pass">
+                                <strong>${pass.id}:</strong> ${pass.description}
+                                (${pass.nodes.length}個の要素)
+                            </div>
+                        `;
+                    });
+                } else {
+                    passes.innerHTML += '<div class="pass">主要なアクセシビリティチェックが通過しました。</div>';
+                }
+
+            } catch (error) {
+                results.style.display = 'block';
+                summary.innerHTML = `<h3>❌ エラー</h3><p>テスト実行中にエラーが発生しました: ${error.message}</p>`;
+            } finally {
+                button.disabled = false;
+                button.textContent = '🚀 axe-coreテスト実行';
+            }
+        }
+
+        function suggestLighthouse() {
+            alert(`🔦 Lighthouseテストの実行方法:
+
+1. Chrome DevToolsを開く (F12)
+2. "Lighthouse"タブを選択
+3. "Accessibility"にチェックを入れる
+4. "Analyze page load"をクリック
+
+または、コマンドライン:
+npx lighthouse http://localhost:5175 --only-categories=accessibility --output=html --output-path=./lighthouse-report.html`);
+        }
+
+        // フレームロード後にaxe-coreを注入
+        document.getElementById('testFrame').onload = function() {
+            const frame = this;
+            if (frame.contentWindow) {
+                // axe-coreスクリプトをフレーム内に注入
+                const script = frame.contentDocument.createElement('script');
+                script.src = 'https://unpkg.com/axe-core@4.10.3/axe.min.js';
+                frame.contentDocument.head.appendChild(script);
+            }
+        };
+    </script>
+</body>
+</html>
