@@ -69,15 +69,27 @@ const FavoriteButton: React.FC<FavoriteButtonProps> = ({
     }
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      e.stopPropagation();
+      if (!isLoading) {
+        handleToggleFavorite(e as any);
+      }
+    }
+  };
+
   return (
     <button
       onClick={handleToggleFavorite}
+      onKeyDown={handleKeyDown}
       disabled={isLoading}
       className={`
         ${buttonSizeClasses[size]}
         inline-flex items-center justify-center
         rounded-full
         transition-all duration-200
+        focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2
         ${isFavorite 
           ? 'text-red-500 hover:text-red-600 hover:bg-red-50' 
           : 'text-gray-400 hover:text-red-500 hover:bg-gray-50'
@@ -87,9 +99,12 @@ const FavoriteButton: React.FC<FavoriteButtonProps> = ({
       `}
       title={isFavorite ? 'お気に入りから削除' : 'お気に入りに追加'}
       aria-label={isFavorite ? 'お気に入りから削除' : 'お気に入りに追加'}
+      aria-pressed={isFavorite}
+      tabIndex={0}
     >
       <Heart 
         className={`${sizeClasses[size]} ${isFavorite ? 'fill-current' : ''}`}
+        aria-hidden="true"
       />
       {showLabel && (
         <span className="ml-1 text-sm font-medium">

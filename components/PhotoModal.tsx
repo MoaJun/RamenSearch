@@ -21,21 +21,73 @@ const PhotoModal: React.FC<PhotoModalProps> = ({
   onNext,
   shopName
 }) => {
-  if (!isOpen) return null;
-
   const handleBackdropClick = (e: React.MouseEvent) => {
     if (e.target === e.currentTarget) {
       onClose();
     }
   };
 
+  const handleCloseKeyDown = (event: React.KeyboardEvent) => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      onClose();
+    }
+  };
+
+  const handlePreviousKeyDown = (event: React.KeyboardEvent) => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      onPrevious();
+    }
+  };
+
+  const handleNextKeyDown = (event: React.KeyboardEvent) => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      onNext();
+    }
+  };
+
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!isOpen) return;
+      
+      switch (e.key) {
+        case 'Escape':
+          onClose();
+          break;
+        case 'ArrowLeft':
+          e.preventDefault();
+          onPrevious();
+          break;
+        case 'ArrowRight':
+          e.preventDefault();
+          onNext();
+          break;
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose, onPrevious, onNext]);
+
+  if (!isOpen) return null;
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90" onClick={handleBackdropClick}>
+    <div 
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/90" 
+      onClick={handleBackdropClick}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="photo-modal-title"
+    >
       <div className="relative max-w-7xl max-h-screen w-full h-full flex items-center justify-center p-4">
         {/* Close Button */}
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 z-10 bg-black/50 text-white p-2 rounded-full hover:bg-black/70 transition-colors"
+          onKeyDown={handleCloseKeyDown}
+          tabIndex={0}
+          className="absolute top-4 right-4 z-10 bg-black/50 text-white p-2 rounded-full hover:bg-black/70 transition-colors focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-black"
           aria-label="モーダルを閉じる"
         >
           <X className="h-6 w-6" />
@@ -46,14 +98,18 @@ const PhotoModal: React.FC<PhotoModalProps> = ({
           <>
             <button
               onClick={onPrevious}
-              className="absolute left-4 top-1/2 -translate-y-1/2 z-10 bg-black/50 text-white p-3 rounded-full hover:bg-black/70 transition-colors"
+              onKeyDown={handlePreviousKeyDown}
+              tabIndex={0}
+              className="absolute left-4 top-1/2 -translate-y-1/2 z-10 bg-black/50 text-white p-3 rounded-full hover:bg-black/70 transition-colors focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-black"
               aria-label="前の写真"
             >
               <ChevronLeft className="h-6 w-6" />
             </button>
             <button
               onClick={onNext}
-              className="absolute right-4 top-1/2 -translate-y-1/2 z-10 bg-black/50 text-white p-3 rounded-full hover:bg-black/70 transition-colors"
+              onKeyDown={handleNextKeyDown}
+              tabIndex={0}
+              className="absolute right-4 top-1/2 -translate-y-1/2 z-10 bg-black/50 text-white p-3 rounded-full hover:bg-black/70 transition-colors focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-black"
               aria-label="次の写真"
             >
               <ChevronRight className="h-6 w-6" />
@@ -73,7 +129,7 @@ const PhotoModal: React.FC<PhotoModalProps> = ({
         {/* Image Counter and Info */}
         <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/50 text-white px-4 py-2 rounded-lg">
           <div className="text-center">
-            <div className="text-sm font-medium">{shopName}</div>
+            <div id="photo-modal-title" className="text-sm font-medium">{shopName}</div>
             <div className="text-xs text-gray-300 mt-1">
               {currentIndex + 1} / {photos.length}
             </div>
@@ -87,7 +143,9 @@ const PhotoModal: React.FC<PhotoModalProps> = ({
               <button
                 key={index}
                 onClick={() => {/* Will be handled by parent */}}
-                className={`flex-shrink-0 w-12 h-12 rounded-md overflow-hidden border-2 transition-colors ${
+                tabIndex={0}
+                aria-label={`写真 ${index + 1} に移動`}
+                className={`flex-shrink-0 w-12 h-12 rounded-md overflow-hidden border-2 transition-colors focus:outline-none focus:ring-2 focus:ring-white ${
                   index === currentIndex ? 'border-white' : 'border-transparent hover:border-white/50'
                 }`}
               >

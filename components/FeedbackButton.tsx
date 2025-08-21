@@ -7,9 +7,18 @@ interface FeedbackButtonProps {
 }
 
 const FeedbackButton: React.FC<FeedbackButtonProps> = ({ onOpen }) => {
+    const handleKeyDown = (event: React.KeyboardEvent) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            onOpen();
+        }
+    };
+
     return (
         <button
             onClick={onOpen}
+            onKeyDown={handleKeyDown}
+            tabIndex={0}
             className="fixed bottom-5 right-5 z-50 flex items-center justify-center w-14 h-14 bg-red-600 text-white rounded-full shadow-lg hover:bg-red-700 transition-transform transform hover:scale-110 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 focus:ring-offset-gray-900"
             aria-label="フィードバックを送信"
         >

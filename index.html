@@ -97,16 +97,170 @@
         width: 100%;
       }
       
-      .search-button:hover {
-        background-color: rgb(37, 99, 235); /* bg-blue-700 */
+      /* Hover rule moved to touch-friendly section */
+      
+      /* [RESPONSIVE-001] Enhanced responsive breakpoints for 320px-2560px */
+      
+      /* Extra small devices (320px and up) */
+      @media (min-width: 320px) {
+        .container {
+          padding: 0 0.75rem;
+        }
+        
+        .search-section {
+          padding: 1rem;
+          margin: 0.75rem 0;
+        }
+        
+        .search-input {
+          padding: 0.875rem; /* Larger touch target */
+          font-size: 1rem;
+        }
+        
+        .search-button {
+          padding: 1rem;
+          font-size: 1.125rem; /* 18px for better readability */
+          margin-top: 1rem;
+        }
+        
+        .header-title {
+          font-size: 1.375rem; /* 22px */
+        }
       }
       
-      /* Grid layout for large screens */
+      /* Small devices (576px and up) */
+      @media (min-width: 576px) {
+        .container {
+          padding: 0 1rem;
+        }
+        
+        .search-section {
+          padding: 1.25rem;
+        }
+        
+        .header-title {
+          font-size: 1.5rem; /* 24px */
+        }
+      }
+      
+      /* Medium devices (768px and up) */
+      @media (min-width: 768px) {
+        .container {
+          padding: 0 1.5rem;
+        }
+        
+        .search-section {
+          padding: 1.5rem;
+          margin: 1rem 0;
+        }
+        
+        .search-button {
+          max-width: 200px; /* Prevent button from being too wide */
+        }
+        
+        .header-title {
+          font-size: 1.75rem; /* 28px */
+        }
+      }
+      
+      /* Large devices (1024px and up) - Desktop */
       @media (min-width: 1024px) {
         .main-grid {
           display: grid;
           grid-template-columns: 1fr 1fr;
-          gap: 1rem;
+          gap: 1.5rem;
+        }
+        
+        .container {
+          padding: 0 2rem;
+        }
+        
+        .header-title {
+          font-size: 2rem; /* 32px */
+        }
+      }
+      
+      /* Extra large devices (1440px and up) */
+      @media (min-width: 1440px) {
+        .container {
+          max-width: 1400px;
+        }
+        
+        .main-grid {
+          gap: 2rem;
+        }
+      }
+      
+      /* Ultra wide devices (2560px and up) */
+      @media (min-width: 2560px) {
+        .container {
+          max-width: 2400px;
+        }
+        
+        .main-grid {
+          grid-template-columns: 1fr 2fr; /* Adjust ratio for ultra-wide */
+          gap: 3rem;
+        }
+      }
+      
+      /* [TOUCH-FRIENDLY-001] Touch optimization for mobile devices */
+      
+      /* Minimum touch target sizes (44x44px per iOS HIG, 48x48px per Material Design) */
+      .search-button,
+      .mobile-touch-target {
+        min-height: 48px;
+        min-width: 48px;
+        position: relative;
+      }
+      
+      /* Enhanced focus states for keyboard/screen readers */
+      .search-input:focus,
+      .search-button:focus,
+      button:focus,
+      select:focus {
+        outline: 2px solid rgb(59, 130, 246); /* blue-600 */
+        outline-offset: 2px;
+      }
+      
+      /* Hover states disabled on touch devices to prevent sticky hover */
+      @media (hover: hover) {
+        .search-button:hover {
+          background-color: rgb(37, 99, 235); /* bg-blue-700 */
+        }
+      }
+      
+      /* Better tap highlighting on WebKit browsers */
+      .search-button,
+      button {
+        -webkit-tap-highlight-color: rgba(59, 130, 246, 0.3);
+      }
+      
+      /* Prevent text selection on UI elements */
+      .header-title,
+      .search-button,
+      button {
+        -webkit-user-select: none;
+        user-select: none;
+      }
+      
+      /* High contrast mode support */
+      @media (prefers-contrast: high) {
+        .search-input {
+          border-width: 2px;
+        }
+        
+        .search-button {
+          border: 2px solid currentColor;
+        }
+      }
+      
+      /* Reduced motion accessibility */
+      @media (prefers-reduced-motion: reduce) {
+        .animate-slide-in-bottom,
+        .animate-fade-in-fast,
+        body {
+          animation: none;
+          transition: none;
         }
       }
       

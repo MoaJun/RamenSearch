@@ -58,6 +58,14 @@ const RamenShopListItem: React.FC<RamenShopListItemProps> = ({ shop, onSelect, i
   const pageCount = Math.ceil(otherReviews.length / REVIEWS_PER_PAGE);
   const paginatedReviews = otherReviews.slice(reviewPage * REVIEWS_PER_PAGE, (reviewPage + 1) * REVIEWS_PER_PAGE);
   
+  // DEBUG: ラップされたonSelectでログ出力
+  const handleShopSelect = () => {
+    console.log('🔥 RamenShopListItem: Shop clicked!', shop.name, shop.placeId);
+    console.log('🔥 RamenShopListItem: Calling onSelect...');
+    onSelect();
+    console.log('🔥 RamenShopListItem: onSelect called successfully');
+  };
+  
   const toggleAccordion = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();
     if (isReviewsOpen) {
@@ -71,17 +79,52 @@ const RamenShopListItem: React.FC<RamenShopListItemProps> = ({ shop, onSelect, i
     setIsSummaryOpen(!isSummaryOpen);
   };
 
+  const handleCardKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      console.log('🔥 RamenShopListItem: Keyboard navigation triggered');
+      handleShopSelect();
+    }
+    if (e.key === 'Escape') {
+      (e.target as HTMLElement).blur();
+    }
+  };
+
+  const handleToggleKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>, toggleFunction: () => void) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      e.stopPropagation();
+      toggleFunction();
+    }
+  };
+
+  const handlePageNavKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>, direction: 'prev' | 'next') => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      e.stopPropagation();
+      if (direction === 'prev' && reviewPage > 0) {
+        setReviewPage(p => p - 1);
+      } else if (direction === 'next' && reviewPage < pageCount - 1) {
+        setReviewPage(p => p + 1);
+      }
+    }
+  };
+
   return (
     <div
-      className={`bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden transition-all duration-300 group ${
+      className={`bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden transition-all duration-300 group cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
         isHighlighted ? 'ring-2 ring-blue-500 shadow-lg transform scale-105' : 
         isHovered ? 'ring-2 ring-red-500' : ''
       }`}
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
       onClick={onClick}
+      onKeyDown={handleCardKeyDown}
+      tabIndex={0}
+      role="button"
+      aria-label={`${shop.name}の詳細を表示`}
     >
-      <div className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/40 transition-colors" onClick={onSelect}>
+      <div className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/40 transition-colors" onClick={handleShopSelect}>
         <ResponsiveImage photo={shop.photos[0]} sizes="(max-width: 768px) 100vw, 50vw" className="w-full h-40 object-cover" />
         <div className="p-4">
             <div className="flex items-start gap-3">
@@ -126,8 +169,10 @@ const RamenShopListItem: React.FC<RamenShopListItemProps> = ({ shop, onSelect, i
                 <div className="flex justify-between items-center mt-3 text-sm">
                   <button 
                     onClick={(e) => { e.stopPropagation(); setReviewPage(p => p - 1); }} 
+                    onKeyDown={(e) => handlePageNavKeyDown(e, 'prev')}
                     disabled={reviewPage === 0}
-                    className="flex items-center p-1 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    className="flex items-center p-1 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    aria-label="前のページ"
                   >
                     <ChevronLeft className="w-5 h-5" />
                     <span className="hidden sm:inline">前へ</span>
@@ -137,8 +182,10 @@ const RamenShopListItem: React.FC<RamenShopListItemProps> = ({ shop, onSelect, i
                   </span>
                   <button 
                     onClick={(e) => { e.stopPropagation(); setReviewPage(p => p + 1); }} 
+                    onKeyDown={(e) => handlePageNavKeyDown(e, 'next')}
                     disabled={reviewPage >= pageCount - 1}
-                    className="flex items-center p-1 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    className="flex items-center p-1 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    aria-label="次のページ"
                   >
                      <span className="hidden sm:inline">次へ</span>
                     <ChevronRight className="w-5 h-5" />
@@ -151,7 +198,10 @@ const RamenShopListItem: React.FC<RamenShopListItemProps> = ({ shop, onSelect, i
           {shop.reviews.length > 1 && (
              <button
                 onClick={toggleAccordion}
-                className="w-full mt-2 text-center text-red-600 dark:text-red-500 font-semibold text-sm hover:text-red-800 dark:hover:text-red-400 flex items-center justify-center"
+                onKeyDown={(e) => handleToggleKeyDown(e, () => toggleAccordion(e as any))}
+                className="w-full mt-2 text-center text-red-600 dark:text-red-500 font-semibold text-sm hover:text-red-800 dark:hover:text-red-400 flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 rounded-md p-1"
+                aria-label={isReviewsOpen ? 'レビューを閉じる' : `他のレビュー${shop.reviews.length - 1}件を表示`}
+                aria-expanded={isReviewsOpen}
             >
                 {isReviewsOpen ? 'レビューを閉じる' : `他のレビュー${shop.reviews.length - 1}件を表示`}
                 <ChevronDown className={`w-5 h-5 ml-1 transition-transform ${isReviewsOpen ? 'rotate-180' : ''}`} />
@@ -163,7 +213,10 @@ const RamenShopListItem: React.FC<RamenShopListItemProps> = ({ shop, onSelect, i
       <div className="px-4 py-3 border-t border-gray-100 dark:border-gray-700">
         <button
             onClick={toggleSummaryAccordion}
-            className="w-full text-red-600 dark:text-red-500 font-semibold text-sm hover:text-red-800 dark:hover:text-red-400 flex items-center justify-center"
+            onKeyDown={(e) => handleToggleKeyDown(e, () => toggleSummaryAccordion(e as any))}
+            className="w-full text-red-600 dark:text-red-500 font-semibold text-sm hover:text-red-800 dark:hover:text-red-400 flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 rounded-md p-1"
+            aria-label={isSummaryOpen ? 'AI要約を閉じる' : 'AIによるクチコミ要約を見る'}
+            aria-expanded={isSummaryOpen}
         >
             <Lightbulb className="w-4 h-4 mr-2" />
             {isSummaryOpen ? 'AI要約を閉じる' : 'AIによるクチコミ要約を見る'}

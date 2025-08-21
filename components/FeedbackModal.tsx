@@ -79,6 +79,28 @@ const FeedbackModal: React.FC<FeedbackModalProps> = ({ isOpen, onClose, onSubmit
         }
     };
 
+    const handleCloseKeyDown = (event: React.KeyboardEvent) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            onClose();
+        }
+    };
+
+    const handleFileSelectKeyDown = (event: React.KeyboardEvent) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            fileInputRef.current?.click();
+        }
+    };
+
+    const handleImageRemoveKeyDown = (event: React.KeyboardEvent) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            setScreenshot(null);
+            if(fileInputRef.current) fileInputRef.current.value = '';
+        }
+    };
+
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             if (e.key === 'Escape') {
@@ -116,7 +138,13 @@ const FeedbackModal: React.FC<FeedbackModalProps> = ({ isOpen, onClose, onSubmit
             >
                 <div className="flex justify-between items-center p-4 border-b border-gray-800">
                     <h2 id="feedback-modal-title" className="text-xl font-bold text-white">フィードバックを送信</h2>
-                    <button onClick={onClose} className="p-1 rounded-full text-gray-400 hover:bg-gray-700 hover:text-white transition-colors">
+                    <button 
+                        onClick={onClose}
+                        onKeyDown={handleCloseKeyDown}
+                        tabIndex={0}
+                        aria-label="モーダルを閉じる"
+                        className="p-1 rounded-full text-gray-400 hover:bg-gray-700 hover:text-white transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 focus:ring-offset-gray-900"
+                    >
                         <X className="w-6 h-6" />
                     </button>
                 </div>
@@ -126,11 +154,25 @@ const FeedbackModal: React.FC<FeedbackModalProps> = ({ isOpen, onClose, onSubmit
                             <label className="block text-sm font-medium text-gray-300 mb-2">フィードバックの種類</label>
                             <div className="flex space-x-4">
                                 <label className="flex items-center space-x-2 cursor-pointer">
-                                    <input type="radio" name="feedbackType" value="suggestion" checked={type === 'suggestion'} onChange={(e) => setType(e.target.value)} className="form-radio h-4 w-4 text-red-500 bg-gray-800 border-gray-600 focus:ring-red-500"/>
+                                    <input 
+                                        type="radio" 
+                                        name="feedbackType" 
+                                        value="suggestion" 
+                                        checked={type === 'suggestion'} 
+                                        onChange={(e) => setType(e.target.value)} 
+                                        className="form-radio h-4 w-4 text-red-500 bg-gray-800 border-gray-600 focus:ring-red-500"
+                                    />
                                     <span className="text-gray-200">ご意見・ご要望</span>
                                 </label>
                                 <label className="flex items-center space-x-2 cursor-pointer">
-                                    <input type="radio" name="feedbackType" value="bug" checked={type === 'bug'} onChange={(e) => setType(e.target.value)} className="form-radio h-4 w-4 text-red-500 bg-gray-800 border-gray-600 focus:ring-red-500"/>
+                                    <input 
+                                        type="radio" 
+                                        name="feedbackType" 
+                                        value="bug" 
+                                        checked={type === 'bug'} 
+                                        onChange={(e) => setType(e.target.value)} 
+                                        className="form-radio h-4 w-4 text-red-500 bg-gray-800 border-gray-600 focus:ring-red-500"
+                                    />
                                     <span className="text-gray-200">バグ報告</span>
                                 </label>
                             </div>
@@ -159,7 +201,9 @@ const FeedbackModal: React.FC<FeedbackModalProps> = ({ isOpen, onClose, onSubmit
                                             setScreenshot(null);
                                             if(fileInputRef.current) fileInputRef.current.value = '';
                                         }}
-                                        className="absolute top-2 right-2 bg-black bg-opacity-60 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                                        onKeyDown={handleImageRemoveKeyDown}
+                                        tabIndex={0}
+                                        className="absolute top-2 right-2 bg-black bg-opacity-60 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity focus:outline-none focus:ring-2 focus:ring-red-500 focus:opacity-100"
                                         aria-label="画像を削除"
                                     >
                                         <X className="w-4 h-4" />
@@ -169,7 +213,10 @@ const FeedbackModal: React.FC<FeedbackModalProps> = ({ isOpen, onClose, onSubmit
                                 <button
                                     type="button"
                                     onClick={() => fileInputRef.current?.click()}
-                                    className="w-full flex items-center justify-center space-x-2 px-4 py-3 border-2 border-dashed border-gray-600 rounded-lg text-gray-400 hover:border-gray-500 hover:text-gray-300 transition-colors"
+                                    onKeyDown={handleFileSelectKeyDown}
+                                    tabIndex={0}
+                                    aria-label="画像ファイルを選択"
+                                    className="w-full flex items-center justify-center space-x-2 px-4 py-3 border-2 border-dashed border-gray-600 rounded-lg text-gray-400 hover:border-gray-500 hover:text-gray-300 transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 focus:ring-offset-gray-900"
                                 >
                                     <ImageIcon className="w-5 h-5" />
                                     <span>クリックして画像を選択</span>
@@ -188,7 +235,7 @@ const FeedbackModal: React.FC<FeedbackModalProps> = ({ isOpen, onClose, onSubmit
                         <button
                             type="submit"
                             disabled={!details.trim() || isSubmitting}
-                            className="flex items-center justify-center bg-red-600 text-white font-bold px-6 py-2.5 rounded-lg hover:bg-red-700 transition shadow-md disabled:opacity-50 disabled:cursor-not-allowed w-32"
+                            className="flex items-center justify-center bg-red-600 text-white font-bold px-6 py-2.5 rounded-lg hover:bg-red-700 transition shadow-md disabled:opacity-50 disabled:cursor-not-allowed w-32 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 focus:ring-offset-gray-900"
                         >
                             {isSubmitting ? (
                                 <Loader2 className="w-5 h-5 animate-spin" />

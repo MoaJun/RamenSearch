@@ -2,214 +2,100 @@
   "master": {
     "tasks": [
       {
-        "id": 1,
-        "title": "Conduct Bundle Size Analysis and Identify Unused Dependencies",
-        "description": "Perform a detailed bundle size analysis using tools like Webpack Bundle Analyzer or Vite's built-in analyzer to identify unused or redundant dependencies in the React application.",
-        "status": "done",
+        "id": 16,
+        "title": "Fix Search Results Rendering Bug in SearchPage.tsx",
+        "description": "Resolve the critical issue where search results are logged to console but not rendered on screen.",
+        "details": "Investigate and fix the rendering logic in SearchPage.tsx. Ensure that the result array (e.g., from Supabase query) is properly mapped and rendered using React elements. Validate that the data structure matches expected shape (e.g., {name, score, confidence, address}). Use console logging to verify data flow before and after rendering. Apply strict TypeScript typing for search results to prevent type mismatches.",
+        "testStrategy": "Verify that search results appear in the UI when a query is entered; check console logs confirm correct result array structure; test with multiple queries (e.g., '渋谷', '恵比寿') and validate rendering consistency.",
+        "priority": "high",
         "dependencies": [],
-        "priority": "high",
-        "details": "Run `vite build --report` to generate a bundle report. Analyze the output to detect unnecessary packages, especially those not used in core components (e.g., lodash, react-router-dom). Remove or refactor unused imports and apply tree-shaking optimizations.\n\nCurrent bundle analysis results:\n- Total size: 602.26KB (gzipped: 156.15KB)\n- Largest chunks: vendor(273.48KB), ai(225.23KB), components(58.09KB)\n\nKey dependencies identified:\n- vendor: React/ReactDOM (273KB) - essential, difficult to optimize\n- ai: @google/genai (225KB) - used via ReviewSummary.tsx, target for dynamic import\n- components: lucide-react and various components (58KB) - eligible for tree-shaking\n- utils: services/utilities (22KB) - candidate for refactoring\n- google-maps: @googlemaps/* (5.6KB) - already optimized\n\nOptimization strategy:\n1. Strengthen lazy loading of @google/genai to reduce 225KB\n2. Implement dynamic import in ReviewSummary.tsx\n3. Remove unused lucide-react icons via tree-shaking\n4. Refactor utils/services into smaller, more focused modules\n5. Target: 20% reduction (120KB) → final size of 403KB",
-        "testStrategy": "Verify that the total gzipped bundle size is reduced by at least 20% compared to baseline using Lighthouse and manual measurement. Specifically target a final gzipped size of 156.15KB (current) minus 120KB, resulting in 36.15KB reduction or a final size of 403KB.",
-        "subtasks": [
-          {
-            "id": 1,
-            "title": "Implement dynamic import for @google/genai in ReviewSummary.tsx",
-            "description": "Modify ReviewSummary.tsx to use dynamic imports for @google/genai, ensuring it is only loaded when the component is rendered or interacted with.",
-            "status": "done",
-            "dependencies": [],
-            "details": "",
-            "testStrategy": ""
-          },
-          {
-            "id": 2,
-            "title": "Remove unused lucide-react icons via tree-shaking",
-            "description": "Audit and remove any lucide-react icons not used in core components. Ensure removal does not impact functionality, and verify tree-shaking is effective through bundle analysis.",
-            "status": "done",
-            "dependencies": [],
-            "details": "",
-            "testStrategy": ""
-          },
-          {
-            "id": 3,
-            "title": "Refactor utils/services module into smaller, focused pieces",
-            "description": "Break down the services/utilities module into smaller, reusable, and targeted utility functions to improve tree-shaking effectiveness and reduce bundle size.",
-            "status": "done",
-            "dependencies": [],
-            "details": "",
-            "testStrategy": ""
-          }
-        ]
-      },
-      {
-        "id": 2,
-        "title": "Implement Dynamic Imports for Non-Critical Components",
-        "description": "Refactor non-essential components (e.g., settings, profile) to use dynamic imports to reduce initial bundle load.",
-        "details": "Use `import()` syntax in React components such as `LazyLoadSearchForm` or `SettingsPanel`. Ensure lazy loading is properly managed with React.lazy and Suspense for smooth user experience during rendering.",
-        "testStrategy": "Check that the initial page load time (FCP) improves by measuring FCP before and after dynamic imports using Lighthouse.",
-        "priority": "high",
-        "dependencies": [
-          1
-        ],
         "status": "done",
         "subtasks": []
       },
       {
-        "id": 3,
-        "title": "Optimize Google Maps API Loading with Lazy Initialization",
-        "description": "Delay loading of Google Maps JavaScript API until the map component is needed to reduce initial load time.",
-        "details": "Use conditional rendering and `useEffect` to load Google Maps only when a user interacts with the map. Implement a loading spinner during initialization and ensure proper error handling for failed loads.",
-        "testStrategy": "Measure FCP and TTI improvements in both desktop and mobile environments using browser dev tools and Lighthouse.",
-        "priority": "high",
+        "id": 17,
+        "title": "Remove Redundant Favorite Button in Search UI",
+        "description": "Eliminate the unnecessary 'favorite' button from the search results page to simplify UX.",
+        "details": "Locate and remove the redundant favorite button component in SearchPage.tsx. Ensure no side effects (e.g., state updates or API calls) are triggered by its removal. Update UI to maintain minimalism while preserving functionality of other buttons (e.g., 'View Details').",
+        "testStrategy": "Confirm that the favorite button is completely absent from search results; verify no unintended behavior occurs when interacting with other elements.",
+        "priority": "medium",
         "dependencies": [
-          1
+          16
         ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 18,
+        "title": "Fix Bookmark Button Layout on Mobile Devices",
+        "description": "Resolve the responsive layout issue where bookmark buttons collapse or overlap on mobile views.",
+        "details": "Update the CSS media queries in `styles/mobile.css` to ensure the 'Go' and 'Bookmark' buttons are properly stacked or spaced. Use Flexbox/Grid with breakpoints (e.g., 320px, 480px) for responsive behavior. Test on actual mobile devices using Chrome DevTools.",
+        "testStrategy": "Test on iPhone and Android emulators; verify button visibility and spacing at various screen sizes; confirm no clipping or overlap in small screens.",
+        "priority": "high",
+        "dependencies": [],
         "status": "done",
         "subtasks": []
       },
       {
-        "id": 4,
-        "title": "Inline Critical CSS for Core UI Components",
-        "description": "Extract and inline critical CSS from the main layout to reduce render-blocking resources.",
-        "details": "Identify the minimal set of styles required for initial page rendering (e.g., header, search bar, card layout). Inject this CSS directly into HTML via `style` tag or a pre-rendered `<style>` block in the app entry point.",
-        "testStrategy": "Verify FCP is under 1.0 seconds using Lighthouse and Chrome DevTools Performance tab.",
+        "id": 19,
+        "title": "Unify Bookmark & Favorite Functionality to 'Favorites' and 'Visited'",
+        "description": "Replace dual concepts of 'bookmark' and 'favorite' with two clear states: 'Favorite' and 'Visited'.",
+        "details": "Update the state management in `BookmarkContext.tsx` to track two distinct flags: `isFavorite`, `isVisited`. Modify UI components (e.g., store detail page) to show appropriate labels. Ensure backend Supabase schema supports these fields with proper update logic via API calls.",
+        "testStrategy": "Verify that toggling 'favorite' or 'visited' updates state correctly; confirm both states are clearly displayed in UI; test cross-page navigation between detail and my page.",
         "priority": "high",
         "dependencies": [
-          2
-        ],
-        "status": "done",
-        "subtasks": []
-      },
-      {
-        "id": 5,
-        "title": "Optimize Images to WebP with Lazy Loading",
-        "description": "Convert all static images to WebP format and implement lazy loading for off-screen images.",
-        "details": "Use `next/image` or custom image components that auto-detect device type and serve WebP. Apply `loading='lazy'` attribute to all non-critical image elements (e.g., restaurant thumbnails).",
-        "testStrategy": "Validate image load performance via Lighthouse Image Optimization score and measure page speed improvements.",
-        "priority": "medium",
-        "dependencies": [
-          1
+          18
         ],
         "status": "pending",
         "subtasks": []
       },
       {
-        "id": 6,
-        "title": "Apply React.memo to Prevent Unnecessary Re-renders",
-        "description": "Wrap frequently updated components (e.g., search results list, restaurant cards) with `React.memo` to avoid redundant re-renders.",
-        "details": "Identify components that receive large props or are deeply nested. Use `React.memo` and ensure comparison functions correctly detect changes in state or props.",
-        "testStrategy": "Use React DevTools to monitor render counts before and after memoization; verify TTI improvement via Lighthouse.",
-        "priority": "medium",
-        "dependencies": [
-          4
-        ],
-        "status": "pending",
-        "subtasks": []
-      },
-      {
-        "id": 7,
-        "title": "Implement Responsive Design Breakpoints for Mobile Devices",
-        "description": "Refactor layout breakpoints to ensure optimal display across all screen sizes (320px–2560px).",
-        "details": "Use CSS media queries with responsive units (rem, vw) and adjust component layouts based on viewport width. Prioritize touch-friendly spacing and font sizing for mobile devices.",
-        "testStrategy": "Test on real iOS and Android devices using Chrome DevTools Device Mode; ensure all UI elements are readable and operable.",
+        "id": 20,
+        "title": "Stabilize Auto-Complete Functionality with Google Places API",
+        "description": "Fix inconsistent behavior of auto-complete when searching for locations like '恵比寿'.",
+        "details": "Review and adjust the Google Places Autocomplete API configuration in `useAutoComplete.tsx`. Set proper request parameters (e.g., types: ['establishment'], language: 'ja'). Implement fallback to mock data if API fails. Use debounce (e.g., 300ms) to reduce unnecessary requests. Validate with both '渋谷駅' and '恵比寿'.",
+        "testStrategy": "Test auto-complete input with various queries; verify results appear consistently across locations; confirm no errors in console when API fails.",
         "priority": "medium",
         "dependencies": [],
         "status": "pending",
         "subtasks": []
       },
       {
-        "id": 8,
-        "title": "Enhance Search Form Usability with Real-Time Feedback",
-        "description": "Improve the search form by adding real-time suggestions, input validation, and clear error messaging.",
-        "details": "Implement autocomplete suggestions using Supabase search API. Show immediate feedback on invalid inputs (e.g., empty fields) with accessible labels and keyboard navigation support.",
-        "testStrategy": "Test user interaction flow via usability testing; ensure accessibility with screen readers and keyboard-only navigation.",
+        "id": 21,
+        "title": "Enhance Map Pin Display with Store Information",
+        "description": "Add shop details (name, rating) to map pins for better identification.",
+        "details": "Modify the Google Maps React component (`MapContainer.tsx`) to render custom pin markers that display name and rating on hover or click. Use `infoWindow` or `markerClusterer` with dynamic content from Supabase API response. Ensure mobile touch events are properly handled.",
+        "testStrategy": "Click a pin; verify info window shows correct shop details (name, score); test on both desktop and mobile devices; confirm no layout issues in small screens.",
         "priority": "medium",
         "dependencies": [],
         "status": "pending",
         "subtasks": []
       },
       {
-        "id": 9,
-        "title": "Improve Loading States for Better UX",
-        "description": "Replace generic loading spinners with animated, context-aware loaders (e.g., restaurant search progress bar).",
-        "details": "Create a custom loading component that reflects the current state (e.g., 'Searching...', 'Loading results...'). Use consistent animation styles across all components.",
-        "testStrategy": "Evaluate user feedback on perceived responsiveness and satisfaction with loading states via A/B testing or surveys.",
-        "priority": "medium",
-        "dependencies": [
-          6
-        ],
+        "id": 22,
+        "title": "Optimize Bundle Size and Performance via Vite & React",
+        "description": "Reduce bundle size to under 200KB and improve page load time by 50%.",
+        "details": "Use Vite's built-in analysis tool (`vite build --report`) to identify large dependencies. Remove unused imports, optimize image assets (e.g., WebP format), and enable tree-shaking in React components. Apply lazy loading for non-critical routes (e.g., store detail page).",
+        "testStrategy": "Measure bundle size via Lighthouse; verify load time reduction by 50% on average; confirm performance metrics meet target thresholds.",
+        "priority": "high",
+        "dependencies": [],
         "status": "pending",
         "subtasks": []
       },
       {
-        "id": 10,
-        "title": "Implement Keyboard Navigation for All Interactive Elements",
-        "description": "Ensure all UI components are fully navigable using keyboard (Tab, Enter, Escape).",
-        "details": "Add `tabindex`, focus management, and accessible labels to buttons, forms, and dropdowns. Test with screen readers like NVDA or VoiceOver.",
-        "testStrategy": "Run automated accessibility tests via axe-core and manual testing on assistive technologies; target 90+ accessibility score in Lighthouse.",
+        "id": 23,
+        "title": "Conduct Cross-Platform and Accessibility Testing",
+        "description": "Ensure full compatibility across devices, browsers, and accessibility standards.",
+        "details": "Run automated tests using Lighthouse (accessibility score ≥90), Cypress for cross-browser testing. Manually test on iOS Safari, Chrome Mobile, and Firefox. Verify keyboard navigation, screen reader support, and ARIA labels in all UI components.",
+        "testStrategy": "Confirm accessibility score ≥90; validate functionality across 3 desktop and 2 mobile browsers; collect user feedback via in-app survey post-release.",
         "priority": "high",
         "dependencies": [
-          8
-        ],
-        "status": "pending",
-        "subtasks": []
-      },
-      {
-        "id": 11,
-        "title": "Add Error Boundary for Component-Level Failures",
-        "description": "Implement a global error boundary to catch and gracefully handle component-level errors.",
-        "details": "Create an `ErrorBoundary` component that catches JavaScript exceptions in components. Display a user-friendly message with a link to support or reload page.",
-        "testStrategy": "Trigger known bugs (e.g., network failures, invalid props) and verify error boundaries prevent crashes and provide clear feedback.",
-        "priority": "medium",
-        "dependencies": [],
-        "status": "pending",
-        "subtasks": []
-      },
-      {
-        "id": 12,
-        "title": "Enable PWA Capabilities with Service Worker Registration",
-        "description": "Set up a Progressive Web App by registering a service worker for offline support and caching assets.",
-        "details": "Create a `sw.js` file to cache static assets (HTML, CSS, JS) and implement background sync logic. Enable install prompt and manifest configuration in `manifest.json`.",
-        "testStrategy": "Test offline functionality on mobile devices; verify PWA installation prompts appear correctly and app loads without network.",
-        "priority": "medium",
-        "dependencies": [],
-        "status": "pending",
-        "subtasks": []
-      },
-      {
-        "id": 13,
-        "title": "Add Location-Based Restaurant Suggestions (Mobile-Only)",
-        "description": "Introduce a feature that suggests nearby restaurants based on device GPS location.",
-        "details": "Use the browser's Geolocation API to detect user position and query Supabase for nearby restaurants. Show results in a map or list with distance indicators.",
-        "testStrategy": "Test on real mobile devices; ensure privacy compliance (e.g., permission prompts) and performance under network constraints.",
-        "priority": "medium",
-        "dependencies": [
-          3
-        ],
-        "status": "pending",
-        "subtasks": []
-      },
-      {
-        "id": 14,
-        "title": "Conduct Cross-Browser and Device Testing",
-        "description": "Verify application functionality across major browsers (Chrome, Safari, Firefox) and devices (iOS, Android).",
-        "details": "Use browser stacks or real device testing to validate layout, responsiveness, and performance on all target platforms.",
-        "testStrategy": "Generate a test report showing pass/fail status for each environment; ensure no visual or functional regressions.",
-        "priority": "medium",
-        "dependencies": [
-          12
-        ],
-        "status": "pending",
-        "subtasks": []
-      },
-      {
-        "id": 15,
-        "title": "Perform Accessibility and Performance Audits with Lighthouse",
-        "description": "Run automated audits to validate compliance with accessibility standards (WCAG 2.1) and performance benchmarks.",
-        "details": "Execute Lighthouse checks on both desktop and mobile views, focusing on performance, accessibility, SEO, and best practices. Address all critical issues in the report.",
-        "testStrategy": "Ensure final scores meet or exceed target thresholds: Performance ≥90, Accessibility ≥90, Mobile Usability ≥95.",
-        "priority": "high",
-        "dependencies": [
-          14
+          16,
+          17,
+          18,
+          19,
+          20,
+          21
         ],
         "status": "pending",
         "subtasks": []
@@ -217,7 +103,7 @@
     ],
     "metadata": {
       "created": "2025-08-19T02:50:16.305Z",
-      "updated": "2025-08-19T14:20:55.975Z",
+      "updated": "2025-08-20T14:19:48.476Z",
       "description": "Tasks for master context"
     }
   }

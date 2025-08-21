@@ -33,6 +33,7 @@ const RamenShopDetail: React.FC<RamenShopDetailProps> = ({
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
   const [showAllReviews, setShowAllReviews] = useState(false);
   const [isPhotoModalOpen, setIsPhotoModalOpen] = useState(false);
+
   return (
     <div className="min-h-screen bg-gray-950 text-gray-200">
       <header className="sticky top-0 z-30 bg-gray-900 border-b border-gray-800 px-4 py-3">
@@ -52,83 +53,60 @@ const RamenShopDetail: React.FC<RamenShopDetailProps> = ({
             <img 
               src={shop.photos[currentPhotoIndex]?.large || shop.photos[0]?.medium || ''} 
               alt={`${shop.name} - ${currentPhotoIndex + 1}`}
-              className="w-full h-64 object-cover cursor-pointer"
+              className="w-full h-80 object-cover cursor-pointer"
               onClick={() => setIsPhotoModalOpen(true)}
             />
-            
             {shop.photos.length > 1 && (
               <>
-                {/* Navigation Arrows */}
                 <button
-                  onClick={() => setCurrentPhotoIndex(prev => 
+                  onClick={() => setCurrentPhotoIndex((prev) => 
                     prev === 0 ? shop.photos.length - 1 : prev - 1
                   )}
-                  className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/50 text-white p-2 rounded-full hover:bg-black/70 transition-colors"
-                  aria-label="前の写真"
+                  className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-70 transition-colors"
                 >
-                  <ChevronLeft className="h-5 w-5" />
+                  <ChevronLeft className="h-6 w-6" />
                 </button>
                 <button
-                  onClick={() => setCurrentPhotoIndex(prev => 
+                  onClick={() => setCurrentPhotoIndex((prev) => 
                     prev === shop.photos.length - 1 ? 0 : prev + 1
                   )}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/50 text-white p-2 rounded-full hover:bg-black/70 transition-colors"
-                  aria-label="次の写真"
+                  className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-70 transition-colors"
                 >
-                  <ChevronRight className="h-5 w-5" />
+                  <ChevronRight className="h-6 w-6" />
                 </button>
-                
-                {/* Photo Counter */}
-                <div className="absolute top-2 right-2 bg-black/50 text-white px-2 py-1 rounded text-sm">
-                  {currentPhotoIndex + 1} / {shop.photos.length}
-                </div>
-                
-                {/* Indicators */}
-                <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex space-x-2">
-                  {shop.photos.map((_, index) => (
-                    <button
-                      key={index}
-                      onClick={() => setCurrentPhotoIndex(index)}
-                      className={`w-2 h-2 rounded-full transition-colors ${
-                        index === currentPhotoIndex ? 'bg-white' : 'bg-white/50'
-                      }`}
-                      aria-label={`写真 ${index + 1} に移動`}
-                    />
-                  ))}
-                </div>
               </>
             )}
           </div>
-          
+
+          {/* Shop Details */}
           <div className="p-6">
-            <h1 className="text-3xl font-bold text-white mb-2">{shop.name}</h1>
-            
-            <div className="flex items-center mb-4 flex-wrap gap-4">
-              <div className="flex items-center">
-                <Star className="h-5 w-5 text-yellow-500 mr-1" fill="currentColor" />
-                <span className="text-yellow-500 font-bold">{shop.rating.toFixed(1)}</span>
+            <div className="flex justify-between items-start mb-4">
+              <div>
+                <h1 className="text-2xl font-bold text-white mb-2">{shop.name}</h1>
+                <div className="flex items-center space-x-4">
+                  <div className="flex items-center">
+                    <Star className="h-5 w-5 text-yellow-400 mr-1" />
+                    <span className="text-yellow-400 font-semibold">{shop.rating}</span>
+                  </div>
+                  <span className="text-gray-400">
+                    {Math.round(shop.distance * 100) / 100}km
+                  </span>
+                </div>
               </div>
-              <div className="flex items-center text-gray-400">
-                <MapPin className="h-4 w-4 mr-1" />
-                <span>{Math.round(shop.distance)}m</span>
-              </div>
-              {shop.isOpenNow ? (
-                <span className="inline-flex items-center text-sm font-semibold px-3 py-1 rounded-full bg-green-600 text-green-100">
-                  営業中
-                </span>
-              ) : (
-                <span className="inline-flex items-center text-sm font-semibold px-3 py-1 rounded-full bg-gray-600 text-gray-100">
-                  営業時間外
-                </span>
-              )}
             </div>
 
-            <p className="text-gray-300 mb-4">{shop.address}</p>
-            
-            <div className="flex space-x-2 mb-6">
+            <div className="text-gray-300 mb-4">
+              <div className="flex items-start space-x-2 mb-2">
+                <MapPin className="h-5 w-5 text-gray-400 mt-0.5" />
+                <span>{shop.address}</span>
+              </div>
+            </div>
+
+            {/* Mobile-Responsive Bookmark Buttons - TASK-18-FIX */}
+            <div className="flex flex-col gap-2 sm:flex-row sm:space-x-2 sm:gap-0 mb-6">
               <button
                 onClick={onBookmarkToggle}
-                className={`flex items-center px-4 py-2 rounded-lg transition-colors ${
+                className={`flex items-center justify-center px-4 py-2 rounded-lg transition-colors ${
                   isBookmarked ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
                 }`}
               >
@@ -138,7 +116,7 @@ const RamenShopDetail: React.FC<RamenShopDetailProps> = ({
               
               <button
                 onClick={() => onStatusToggle('visited')}
-                className={`flex items-center px-4 py-2 rounded-lg transition-colors ${
+                className={`flex items-center justify-center px-4 py-2 rounded-lg transition-colors ${
                   isVisited ? 'bg-green-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
                 }`}
               >
@@ -148,7 +126,7 @@ const RamenShopDetail: React.FC<RamenShopDetailProps> = ({
               
               <button
                 onClick={() => onStatusToggle('favorite')}
-                className={`flex items-center px-4 py-2 rounded-lg transition-colors ${
+                className={`flex items-center justify-center px-4 py-2 rounded-lg transition-colors ${
                   isFavorite ? 'bg-red-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
                 }`}
               >
@@ -157,178 +135,180 @@ const RamenShopDetail: React.FC<RamenShopDetailProps> = ({
               </button>
             </div>
 
-            <div className="space-y-6">
-              {/* Map Section */}
-              <div>
-                <h3 className="text-xl font-semibold mb-3">地図・アクセス</h3>
-                <Suspense fallback={<div className="w-full h-64 bg-gray-800 rounded-lg flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-500"></div></div>}>
-                  <StoreMap shop={shop} apiKey={import.meta.env.VITE_GOOGLE_MAPS_API_KEY || ''} />
-                </Suspense>
-                <div className="mt-3 text-sm text-gray-400 space-y-1">
-                  <p className="flex items-center">
-                    <MapPin className="h-4 w-4 mr-2" />
-                    {shop.address}
-                  </p>
-                  {shop.accessInfo && (
-                    <p className="flex items-center">
-                      <Navigation className="h-4 w-4 mr-2" />
-                      {shop.accessInfo}
-                    </p>
-                  )}
-                </div>
+            {/* Store Information Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+              <div className="bg-gray-800 rounded-lg p-4">
+                <h3 className="font-semibold text-white mb-2">営業時間</h3>
+                <p className="text-gray-300">{shop.hours}</p>
+              </div>
+              
+              <div className="bg-gray-800 rounded-lg p-4">
+                <h3 className="font-semibold text-white mb-2">電話番号</h3>
+                <p className="text-gray-300">{shop.phone}</p>
+              </div>
+              
+              <div className="bg-gray-800 rounded-lg p-4">
+                <h3 className="font-semibold text-white mb-2">混雑状況</h3>
+                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                  shop.crowdedness === 'empty' ? 'bg-green-800 text-green-200' :
+                  shop.crowdedness === 'normal' ? 'bg-yellow-800 text-yellow-200' :
+                  shop.crowdedness === 'busy' ? 'bg-red-800 text-red-200' :
+                  'bg-gray-800 text-gray-200'
+                }`}>
+                  {shop.crowdedness === 'empty' ? '空席あり' :
+                   shop.crowdedness === 'normal' ? '普通' :
+                   shop.crowdedness === 'busy' ? '混雑' : '不明'}
+                </span>
               </div>
 
-              {/* Store Info Section */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <h3 className="text-xl font-semibold mb-3">店舗情報</h3>
-                  <div className="space-y-2 text-gray-300">
-                    <BusinessHours hours={shop.hours} isOpenNow={shop.isOpenNow} />
-                    {(shop.twitterUrl || shop.instagramUrl) && (
-                      <div className="flex items-center">
-                        <ExternalLink className="h-4 w-4 mr-2 text-gray-400" />
-                        {shop.twitterUrl ? (
-                          <a href={shop.twitterUrl} className="text-blue-400 hover:text-blue-300">
-                            X (Twitter)
-                          </a>
-                        ) : (
-                          <a href={shop.instagramUrl} className="text-blue-400 hover:text-blue-300">
-                            Instagram
-                          </a>
-                        )}
-                      </div>
-                    )}
-                    {shop.parkingInfo && (
-                      <div className="flex items-center">
-                        <Car className="h-4 w-4 mr-2 text-gray-400" />
-                        <span>{shop.parkingInfo}</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-                
-                <div>
-                  <h3 className="text-xl font-semibold mb-3">移動時間目安</h3>
-                  <div className="bg-gray-800 rounded-lg p-3">
-                    <p className="text-sm text-gray-400 mb-2">現在地または検索地点から</p>
-                    <div className="space-y-2 text-gray-300">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center">
-                          <span className="mr-2">🚶</span>
-                          <span>徒歩</span>
-                        </div>
-                        <span className="font-semibold">約{Math.ceil(shop.distance / 80)}分 ({Math.round(shop.distance)}m)</span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center">
-                          <span className="mr-2">🚗</span>
-                          <span>車</span>
-                        </div>
-                        <span className="font-semibold">約{Math.max(1, Math.ceil(shop.distance / 400))}分</span>
-                      </div>
-                    </div>
-                  </div>
+              <div className="bg-gray-800 rounded-lg p-4">
+                <h3 className="font-semibold text-white mb-2">
+                  価格帯
+                </h3>
+                <div className="flex">
+                  {Array.from({ length: 4 }, (_, i) => (
+                    <span
+                      key={i}
+                      className={`mr-1 ${
+                        i < (shop.priceLevel || 1) ? 'text-green-400' : 'text-gray-600'
+                      }`}
+                    >
+                      ¥
+                    </span>
+                  ))}
                 </div>
               </div>
-              
-              {/* Ramen Photos Section */}
-              {shop.photos && shop.photos.length > 1 && (
-                <div>
-                  <h3 className="text-xl font-semibold mb-3">ラーメンの写真</h3>
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                    {shop.photos.slice(1, 7).map((photo, index) => (
-                      <div key={index + 1} className="aspect-square overflow-hidden rounded-lg bg-gray-800">
-                        <img 
-                          src={photo.medium || photo.large || ''} 
-                          alt={`${shop.name}のラーメン ${index + 1}`}
-                          className="w-full h-full object-cover hover:scale-105 transition-transform duration-200 cursor-pointer"
-                          onClick={() => {
-                            setCurrentPhotoIndex(index + 1);
-                            setIsPhotoModalOpen(true);
-                          }}
-                        />
-                      </div>
-                    ))}
-                  </div>
-                  {shop.photos.length > 7 && (
-                    <p className="text-sm text-gray-400 mt-2 text-center">
-                      他にも{shop.photos.length - 7}枚の写真があります
-                    </p>
-                  )}
+            </div>
+
+            {/* Store Description */}
+            {shop.description && (
+              <div className="mb-6">
+                <h3 className="font-semibold text-white mb-2">店舗情報</h3>
+                <p className="text-gray-300">{shop.description}</p>
+              </div>
+            )}
+
+            {/* Amenities/Features */}
+            {shop.amenities && shop.amenities.length > 0 && (
+              <div className="mb-6">
+                <h3 className="font-semibold text-white mb-2">設備・サービス</h3>
+                <div className="flex flex-wrap gap-2">
+                  {shop.amenities.map((amenity) => (
+                    <span
+                      key={amenity}
+                      className="px-3 py-1 bg-gray-800 text-gray-300 rounded-full text-sm"
+                    >
+                      {amenity}
+                    </span>
+                  ))}
                 </div>
-              )}
-              
-              
-              {/* Reviews Section */}
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-xl font-semibold">レビュー</h3>
-                  <span className="text-sm text-gray-400">Googleレビュー {shop.reviews.length}件</span>
-                </div>
-                
-                {/* AI Summary Section */}
-                {shop.reviews && shop.reviews.length > 0 && (
-                  <div className="mb-6">
-                    <h4 className="text-lg font-medium mb-3 text-blue-400">AI要約</h4>
-                    <div className="bg-gray-800/50 rounded-lg p-4">
-                      <ReviewSummary placeId={shop.placeId} reviews={shop.reviews} />
-                    </div>
-                  </div>
-                )}
-                
-                <div className="space-y-3">
-                  {(showAllReviews ? shop.reviews : shop.reviews.slice(0, 2)).map((review, index) => (
-                    <div key={index} className="bg-gray-800 rounded-lg p-3">
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center">
-                          <div className="flex">
-                            {[...Array(5)].map((_, i) => (
-                              <Star 
-                                key={i} 
-                                className={`w-4 h-4 ${i < review.rating ? 'text-yellow-400' : 'text-gray-500'}`} 
-                                fill="currentColor" 
-                              />
-                            ))}
-                          </div>
-                          <span className="ml-2 text-sm font-medium">{review.author}</span>
-                        </div>
-                        {review.relative_time_description && (
-                          <span className="text-xs text-gray-400">{review.relative_time_description}</span>
-                        )}
-                      </div>
-                      <p className="text-sm text-gray-300 whitespace-pre-line">{review.text}</p>
+              </div>
+            )}
+
+            {/* Menu/Popular Items */}
+            {shop.menu && shop.menu.length > 0 && (
+              <div className="mb-6">
+                <h3 className="font-semibold text-white mb-2">メニュー・人気商品</h3>
+                <div className="space-y-2">
+                  {shop.menu.slice(0, 5).map((item, index) => (
+                    <div key={index} className="flex justify-between items-center py-2 border-b border-gray-700 last:border-b-0">
+                      <span className="text-gray-300">{item.name}</span>
+                      <span className="text-white font-semibold">¥{item.price}</span>
                     </div>
                   ))}
-                  {shop.reviews.length > 2 && (
+                </div>
+              </div>
+            )}
+
+            {/* Store Map */}
+            <div className="mb-6">
+              <h3 className="font-semibold text-white mb-4">地図</h3>
+              <div className="rounded-lg overflow-hidden">
+                <StoreMap
+                  shop={shop}
+                  className="w-full h-64"
+                />
+              </div>
+            </div>
+
+            {/* Reviews Section */}
+            <div>
+              <h3 className="font-semibold text-white mb-4">レビュー</h3>
+              {shop.reviews && shop.reviews.length > 0 ? (
+                <div className="space-y-4">
+                  {(showAllReviews ? shop.reviews : shop.reviews.slice(0, 3)).map((review, index) => (
+                    <div key={index} className="bg-gray-800 rounded-lg p-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center space-x-2">
+                          <div className="w-8 h-8 bg-gray-600 rounded-full flex items-center justify-center">
+                            <User className="h-4 w-4 text-gray-300" />
+                          </div>
+                          <span className="text-gray-300 font-medium">{review.author}</span>
+                        </div>
+                        <div className="flex items-center">
+                          <Star className="h-4 w-4 text-yellow-400 mr-1" />
+                          <span className="text-yellow-400">{review.rating}</span>
+                        </div>
+                      </div>
+                      <p className="text-gray-300">{review.text}</p>
+                    </div>
+                  ))}
+                  
+                  {shop.reviews.length > 3 && (
                     <button
                       onClick={() => setShowAllReviews(!showAllReviews)}
-                      className="w-full text-center text-blue-400 hover:text-blue-300 font-semibold text-sm flex items-center justify-center"
+                      className="w-full py-2 text-blue-400 hover:text-blue-300 text-center border border-gray-700 rounded-lg hover:border-gray-600 transition-colors"
                     >
-                      {showAllReviews ? 'レビューを閉じる' : `他のレビュー${shop.reviews.length - 2}件を表示`}
-                      <ChevronDown className={`w-4 h-4 ml-1 transition-transform ${showAllReviews ? 'rotate-180' : ''}`} />
+                      {showAllReviews ? 'レビューを閉じる' : `さらに${shop.reviews.length - 3}件のレビューを表示`}
                     </button>
                   )}
                 </div>
-              </div>
+              ) : (
+                <p className="text-gray-400">レビューはまだありません。</p>
+              )}
             </div>
           </div>
         </div>
       </div>
 
       {/* Photo Modal */}
-      <PhotoModal
-        isOpen={isPhotoModalOpen}
-        photos={shop.photos}
-        currentIndex={currentPhotoIndex}
-        onClose={() => setIsPhotoModalOpen(false)}
-        onPrevious={() => setCurrentPhotoIndex(prev => 
-          prev === 0 ? shop.photos.length - 1 : prev - 1
-        )}
-        onNext={() => setCurrentPhotoIndex(prev => 
-          prev === shop.photos.length - 1 ? 0 : prev + 1
-        )}
-        shopName={shop.name}
-      />
+      {isPhotoModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black bg-opacity-90 flex items-center justify-center p-4">
+          <div className="relative max-w-4xl max-h-full">
+            <button
+              onClick={() => setIsPhotoModalOpen(false)}
+              className="absolute top-4 right-4 text-white hover:text-gray-300 z-10"
+            >
+              <X className="h-8 w-8" />
+            </button>
+            <img
+              src={shop.photos[currentPhotoIndex]?.large || shop.photos[currentPhotoIndex]?.medium || ''}
+              alt={`${shop.name} - ${currentPhotoIndex + 1}`}
+              className="max-w-full max-h-full object-contain"
+            />
+            {shop.photos.length > 1 && (
+              <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-2">
+                <button
+                  onClick={() => setCurrentPhotoIndex(prev => 
+                    prev === 0 ? shop.photos.length - 1 : prev - 1
+                  )}
+                  className="bg-black bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-70"
+                >
+                  <ChevronLeft className="h-6 w-6" />
+                </button>
+                <button
+                  onClick={() => setCurrentPhotoIndex(prev => 
+                    prev === shop.photos.length - 1 ? 0 : prev + 1
+                  )}
+                  className="bg-black bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-70"
+                >
+                  <ChevronRight className="h-6 w-6" />
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

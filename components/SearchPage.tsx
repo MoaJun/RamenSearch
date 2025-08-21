@@ -189,6 +189,16 @@ const SearchPage: React.FC<SearchPageProps> = ({
   const markers = useRef<google.maps.Marker[]>([]);
   const itemRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
 
+  // [SEARCH-ENHANCEMENT-001] Real-time input validation and autocomplete
+  const [inputError, setInputError] = useState<string>('');
+  const [inputValid, setInputValid] = useState<boolean>(false);
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState<boolean>(false);
+  const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState<number>(-1);
+  const [isTyping, setIsTyping] = useState<boolean>(false);
+  const suggestionsRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
   // Google Maps Lazy Loading Effect
   useEffect(() => {
     if (!showMap) return;
@@ -266,7 +276,9 @@ const SearchPage: React.FC<SearchPageProps> = ({
 
           marker.addListener('click', () => {
             infoWindow.open(mapInstance.current!, marker);
+            console.log('🔥 SearchPage: onShopSelect called with shop:', shop.name, shop.placeId);
             onShopSelect(shop);
+            console.log('🔥 SearchPage: onShopSelect completed');
           });
 
           // Highlight marker on hover
@@ -444,73 +456,121 @@ const SearchPage: React.FC<SearchPageProps> = ({
       console.log('Comprehensive search results (current location):', searchResults);
 
       if (searchResults && searchResults.length > 0) {
-        const detailPromises = searchResults.map(place => {
+        console.log(`Starting to fetch details for ${searchResults.length} places (current location)...`);
+        let successCount = 0;
+        let errorCount = 0;
+
+        const detailPromises = searchResults.map((place, index) => {
           return new Promise<RamenShop | null>((resolve) => {
             if (!place.place_id) {
+              console.warn(`Place at index ${index} has no place_id:`, place);
               resolve(null);
               return;
             }
-            placesService.getDetails({ placeId: place.place_id, fields: ['name', 'rating', 'formatted_address', 'geometry', 'opening_hours', 'website', 'photos', 'reviews', 'types', 'formatted_phone_number', 'vicinity'] }, (detailedPlace, status) => {
-              if (status === google.maps.places.PlacesServiceStatus.OK && detailedPlace) {
-                const lat = detailedPlace.geometry?.location?.lat();
-                const lng = detailedPlace.geometry?.location?.lng();
-                const distance = (lat && lng && userLocation.current)
-                  ? calculateDistance(userLocation.current.lat, userLocation.current.lng, lat, lng)
-                  : 0;
-                
-                // Get multiple photos if available
-                const photos = detailedPlace.photos && detailedPlace.photos.length > 0
-                  ? detailedPlace.photos.slice(0, 4).map((photo, index) => ({
-                      small: photo.getUrl({ maxWidth: 400, maxHeight: 300 }),
-                      medium: photo.getUrl({ maxWidth: 800, maxHeight: 600 }),
-                      large: photo.getUrl({ maxWidth: 1200, maxHeight: 900 }),
-                      alt: `${detailedPlace.name || ''} - ${index + 1}`
-                    }))
-                  : [{ 
-                      small: 'https://picsum.photos/seed/ramen-default/400/300', 
-                      medium: 'https://picsum.photos/seed/ramen-default/800/600', 
-                      large: 'https://picsum.photos/seed/ramen-default/1200/900', 
-                      alt: detailedPlace.name || 'ラーメン店' 
-                    }];
 
-                const shop: RamenShop = {
-                  placeId: detailedPlace.place_id || `temp-${Math.random().toString(36).substring(2, 15)}`,
-                  name: detailedPlace.name || '',
-                  photos: photos,
-                  rating: detailedPlace.rating || 0,
-                  address: detailedPlace.formatted_address || '',
-                  lat: lat || 0,
-                  lng: lng || 0,
-                  hours: detailedPlace.opening_hours?.weekday_text?.join('\n') || '営業時間情報なし',
-                  website: detailedPlace.website || '',
-                  reviews: detailedPlace.reviews?.map(r => ({ 
-                    author: r.author_name || '', 
-                    text: r.text || '', 
-                    rating: r.rating || 0,
-                    time: r.time,
-                    relative_time_description: r.relative_time_description
-                  })) || [],
-                  distance: distance,
-                  keywords: detailedPlace.types || [],
-                  isOpenNow: calculateIsOpen(detailedPlace.opening_hours),
-                  congestion: '不明',
-                  accessInfo: '',
-                  menu: generateMenuForPlace(detailedPlace.place_id || ''),
-                  parkingInfo: '近隣コインパーキングあり',
-                };
-                resolve(shop);
-              } else {
-                resolve(null);
+            // タイムアウト機能付きでgetDetailsを呼び出し
+            const timeoutId = setTimeout(() => {
+              console.warn(`Timeout for place ${place.place_id} (${place.name || 'unknown'}) - current location search`);
+              errorCount++;
+              resolve(null);
+            }, 5000); // 5秒でタイムアウト
+
+            placesService.getDetails(
+              { 
+                placeId: place.place_id, 
+                fields: [
+                  'name', 'rating', 'formatted_address', 'geometry', 
+                  'opening_hours', 'website', 'photos', 'reviews', 
+                  'types', 'formatted_phone_number', 'vicinity'
+                ] 
+              }, 
+              (detailedPlace, status) => {
+                clearTimeout(timeoutId);
+
+                if (status === google.maps.places.PlacesServiceStatus.OK && detailedPlace) {
+                  successCount++;
+                  console.log(`✓ Successfully fetched details for: ${detailedPlace.name || 'unknown'} (${successCount}/${searchResults.length}) - current location`);
+
+                  const lat = detailedPlace.geometry?.location?.lat();
+                  const lng = detailedPlace.geometry?.location?.lng();
+                  const distance = (lat && lng && userLocation.current)
+                    ? calculateDistance(userLocation.current.lat, userLocation.current.lng, lat, lng)
+                    : 0;
+                  
+                  // Get multiple photos if available
+                  const photos = detailedPlace.photos && detailedPlace.photos.length > 0
+                    ? detailedPlace.photos.slice(0, 4).map((photo, index) => ({
+                        small: photo.getUrl({ maxWidth: 400, maxHeight: 300 }),
+                        medium: photo.getUrl({ maxWidth: 800, maxHeight: 600 }),
+                        large: photo.getUrl({ maxWidth: 1200, maxHeight: 900 }),
+                        alt: `${detailedPlace.name || ''} - ${index + 1}`
+                      }))
+                    : [{ 
+                        small: 'https://picsum.photos/seed/ramen-default/400/300', 
+                        medium: 'https://picsum.photos/seed/ramen-default/800/600', 
+                        large: 'https://picsum.photos/seed/ramen-default/1200/900', 
+                        alt: detailedPlace.name || 'ラーメン店' 
+                      }];
+
+                  const shop: RamenShop = {
+                    placeId: detailedPlace.place_id || `temp-${Math.random().toString(36).substring(2, 15)}`,
+                    name: detailedPlace.name || '',
+                    photos: photos,
+                    rating: detailedPlace.rating || 0,
+                    address: detailedPlace.formatted_address || '',
+                    lat: lat || 0,
+                    lng: lng || 0,
+                    hours: detailedPlace.opening_hours?.weekday_text?.join('\n') || '営業時間情報なし',
+                    website: detailedPlace.website || '',
+                    reviews: detailedPlace.reviews?.map(r => ({ 
+                      author: r.author_name || '', 
+                      text: r.text || '', 
+                      rating: r.rating || 0,
+                      time: r.time,
+                      relative_time_description: r.relative_time_description
+                    })) || [],
+                    distance: distance,
+                    keywords: detailedPlace.types || [],
+                    isOpenNow: calculateIsOpen(detailedPlace.opening_hours),
+                    congestion: '不明',
+                    accessInfo: '',
+                    menu: generateMenuForPlace(detailedPlace.place_id || ''),
+                    parkingInfo: '近隣コインパーキングあり',
+                  };
+                  resolve(shop);
+                } else {
+                  errorCount++;
+                  const errorMsg = status === google.maps.places.PlacesServiceStatus.OVER_QUERY_LIMIT
+                    ? 'API quota exceeded'
+                    : status === google.maps.places.PlacesServiceStatus.REQUEST_DENIED
+                    ? 'Request denied'
+                    : status === google.maps.places.PlacesServiceStatus.INVALID_REQUEST
+                    ? 'Invalid request'
+                    : status === google.maps.places.PlacesServiceStatus.NOT_FOUND
+                    ? 'Place not found'
+                    : `Unknown error (${status})`;
+                  
+                  console.warn(`✗ Failed to fetch details for place ${place.place_id} (${place.name || 'unknown'}) - current location: ${errorMsg}`);
+                  resolve(null);
+                }
               }
-            });
+            );
           });
         });
 
         const fetchedShops = (await Promise.all(detailPromises)).filter((s): s is RamenShop => s !== null);
+        console.log(`📊 Detail fetch summary (current location): ${successCount} success, ${errorCount} errors, ${fetchedShops.length} valid shops`);
         console.log('Fetched shops before setShops (current location):', fetchedShops);
-        setShops(fetchedShops.sort((a, b) => a.distance - b.distance));
+        
+        if (fetchedShops.length > 0) {
+          setShops(fetchedShops.sort((a, b) => a.distance - b.distance));
+          console.log(`✅ Successfully set ${fetchedShops.length} shops in state (current location)`);
+        } else {
+          console.warn('⚠️  No valid shops were fetched - all getDetails calls failed (current location)');
+          setShops([]);
+        }
       } else {
-        console.warn('No search results found');
+        console.warn('No search results found (current location)');
         setShops([]);
       }
     } catch (error) {
@@ -536,7 +596,7 @@ const SearchPage: React.FC<SearchPageProps> = ({
     } finally {
       setIsLocating(false);
     }
-  };
+  };;
 
   const handleSearchByArea = async () => {
     if (!window.google?.maps) {
@@ -584,70 +644,119 @@ const SearchPage: React.FC<SearchPageProps> = ({
       console.log('Comprehensive search results (by area):', searchResults);
 
       if (searchResults && searchResults.length > 0) {
-        const detailPromises = searchResults.map(place => {
+        console.log(`Starting to fetch details for ${searchResults.length} places...`);
+        let successCount = 0;
+        let errorCount = 0;
+
+        const detailPromises = searchResults.map((place, index) => {
           return new Promise<RamenShop | null>((resolve) => {
             if (!place.place_id) {
+              console.warn(`Place at index ${index} has no place_id:`, place);
               resolve(null);
               return;
             }
-            placesService.getDetails({ placeId: place.place_id, fields: ['name', 'rating', 'formatted_address', 'geometry', 'opening_hours', 'website', 'photos', 'reviews', 'types', 'formatted_phone_number', 'vicinity'] }, (detailedPlace, status) => {
-              if (status === google.maps.places.PlacesServiceStatus.OK && detailedPlace) {
-                const lat = detailedPlace.geometry?.location?.lat();
-                const lng = detailedPlace.geometry?.location?.lng();
-                const distance = (lat && lng && userLocation.current)
-                  ? calculateDistance(userLocation.current.lat, userLocation.current.lng, lat, lng)
-                  : 0;
-                // Get multiple photos if available
-                const photos = detailedPlace.photos && detailedPlace.photos.length > 0
-                  ? detailedPlace.photos.slice(0, 4).map((photo, index) => ({
-                      small: photo.getUrl({ maxWidth: 400, maxHeight: 300 }),
-                      medium: photo.getUrl({ maxWidth: 800, maxHeight: 600 }),
-                      large: photo.getUrl({ maxWidth: 1200, maxHeight: 900 }),
-                      alt: `${detailedPlace.name || ''} - ${index + 1}`
-                    }))
-                  : [{ 
-                      small: 'https://picsum.photos/seed/ramen-default/400/300', 
-                      medium: 'https://picsum.photos/seed/ramen-default/800/600', 
-                      large: 'https://picsum.photos/seed/ramen-default/1200/900', 
-                      alt: detailedPlace.name || 'ラーメン店' 
-                    }];
 
-                const shop: RamenShop = {
-                  placeId: detailedPlace.place_id || `temp-${Math.random().toString(36).substring(2, 15)}`,
-                  name: detailedPlace.name || '',
-                  photos: photos,
-                  rating: detailedPlace.rating || 0,
-                  address: detailedPlace.formatted_address || '',
-                  lat: lat || 0,
-                  lng: lng || 0,
-                  hours: detailedPlace.opening_hours?.weekday_text?.join('\n') || '営業時間情報なし',
-                  website: detailedPlace.website || '',
-                  reviews: detailedPlace.reviews?.map(r => ({ 
-                    author: r.author_name || '', 
-                    text: r.text || '', 
-                    rating: r.rating || 0,
-                    time: r.time,
-                    relative_time_description: r.relative_time_description
-                  })) || [],
-                  distance: distance,
-                  keywords: detailedPlace.types || [],
-                  isOpenNow: calculateIsOpen(detailedPlace.opening_hours),
-                  congestion: '不明',
-                  accessInfo: '',
-                  menu: generateMenuForPlace(detailedPlace.place_id || ''),
-                  parkingInfo: '近隣コインパーキングあり',
-                };
-                resolve(shop);
-              } else {
-                resolve(null);
+            // タイムアウト機能付きでgetDetailsを呼び出し
+            const timeoutId = setTimeout(() => {
+              console.warn(`Timeout for place ${place.place_id} (${place.name || 'unknown'})`);
+              errorCount++;
+              resolve(null);
+            }, 5000); // 5秒でタイムアウト
+
+            placesService.getDetails(
+              { 
+                placeId: place.place_id, 
+                fields: [
+                  'name', 'rating', 'formatted_address', 'geometry', 
+                  'opening_hours', 'website', 'photos', 'reviews', 
+                  'types', 'formatted_phone_number', 'vicinity'
+                ] 
+              }, 
+              (detailedPlace, status) => {
+                clearTimeout(timeoutId);
+
+                if (status === google.maps.places.PlacesServiceStatus.OK && detailedPlace) {
+                  successCount++;
+                  console.log(`✓ Successfully fetched details for: ${detailedPlace.name || 'unknown'} (${successCount}/${searchResults.length})`);
+
+                  const lat = detailedPlace.geometry?.location?.lat();
+                  const lng = detailedPlace.geometry?.location?.lng();
+                  const distance = (lat && lng && userLocation.current)
+                    ? calculateDistance(userLocation.current.lat, userLocation.current.lng, lat, lng)
+                    : 0;
+
+                  // Get multiple photos if available
+                  const photos = detailedPlace.photos && detailedPlace.photos.length > 0
+                    ? detailedPlace.photos.slice(0, 4).map((photo, index) => ({
+                        small: photo.getUrl({ maxWidth: 400, maxHeight: 300 }),
+                        medium: photo.getUrl({ maxWidth: 800, maxHeight: 600 }),
+                        large: photo.getUrl({ maxWidth: 1200, maxHeight: 900 }),
+                        alt: `${detailedPlace.name || ''} - ${index + 1}`
+                      }))
+                    : [{ 
+                        small: 'https://picsum.photos/seed/ramen-default/400/300', 
+                        medium: 'https://picsum.photos/seed/ramen-default/800/600', 
+                        large: 'https://picsum.photos/seed/ramen-default/1200/900', 
+                        alt: detailedPlace.name || 'ラーメン店' 
+                      }];
+
+                  const shop: RamenShop = {
+                    placeId: detailedPlace.place_id || `temp-${Math.random().toString(36).substring(2, 15)}`,
+                    name: detailedPlace.name || '',
+                    photos: photos,
+                    rating: detailedPlace.rating || 0,
+                    address: detailedPlace.formatted_address || '',
+                    lat: lat || 0,
+                    lng: lng || 0,
+                    hours: detailedPlace.opening_hours?.weekday_text?.join('\n') || '営業時間情報なし',
+                    website: detailedPlace.website || '',
+                    reviews: detailedPlace.reviews?.map(r => ({ 
+                      author: r.author_name || '', 
+                      text: r.text || '', 
+                      rating: r.rating || 0,
+                      time: r.time,
+                      relative_time_description: r.relative_time_description
+                    })) || [],
+                    distance: distance,
+                    keywords: detailedPlace.types || [],
+                    isOpenNow: calculateIsOpen(detailedPlace.opening_hours),
+                    congestion: '不明',
+                    accessInfo: '',
+                    menu: generateMenuForPlace(detailedPlace.place_id || ''),
+                    parkingInfo: '近隣コインパーキングあり',
+                  };
+                  resolve(shop);
+                } else {
+                  errorCount++;
+                  const errorMsg = status === google.maps.places.PlacesServiceStatus.OVER_QUERY_LIMIT
+                    ? 'API quota exceeded'
+                    : status === google.maps.places.PlacesServiceStatus.REQUEST_DENIED
+                    ? 'Request denied'
+                    : status === google.maps.places.PlacesServiceStatus.INVALID_REQUEST
+                    ? 'Invalid request'
+                    : status === google.maps.places.PlacesServiceStatus.NOT_FOUND
+                    ? 'Place not found'
+                    : `Unknown error (${status})`;
+                  
+                  console.warn(`✗ Failed to fetch details for place ${place.place_id} (${place.name || 'unknown'}): ${errorMsg}`);
+                  resolve(null);
+                }
               }
-            });
+            );
           });
         });
 
         const fetchedShops = (await Promise.all(detailPromises)).filter((s): s is RamenShop => s !== null);
+        console.log(`📊 Detail fetch summary: ${successCount} success, ${errorCount} errors, ${fetchedShops.length} valid shops`);
         console.log('Fetched shops before setShops (by area):', fetchedShops);
-        setShops(fetchedShops.sort((a, b) => a.distance - b.distance));
+        
+        if (fetchedShops.length > 0) {
+          setShops(fetchedShops.sort((a, b) => a.distance - b.distance));
+          console.log(`✅ Successfully set ${fetchedShops.length} shops in state`);
+        } else {
+          console.warn('⚠️  No valid shops were fetched - all getDetails calls failed');
+          setShops([]);
+        }
       } else {
         console.warn('No search results found');
         setShops([]);
@@ -659,7 +768,182 @@ const SearchPage: React.FC<SearchPageProps> = ({
     } finally {
       setIsFiltering(false);
     }
+  };;
+
+  // [SEARCH-ENHANCEMENT-002] Real-time input validation logic
+  const validateSearchInput = (value: string): { isValid: boolean; error: string } => {
+    if (value.length === 0) {
+      return { isValid: false, error: '' }; // Empty is not an error, just not valid
+    }
+    
+    if (value.length < 2) {
+      return { isValid: false, error: '2文字以上入力してください' };
+    }
+    
+    if (value.length > 50) {
+      return { isValid: false, error: '50文字以下で入力してください' };
+    }
+    
+    // Check for invalid characters (basic validation)
+    const invalidChars = /[<>{}[\]\\\/]/;
+    if (invalidChars.test(value)) {
+      return { isValid: false, error: '使用できない文字が含まれています' };
+    }
+    
+    return { isValid: true, error: '' };
   };
+
+  // [SEARCH-ENHANCEMENT-003] Generate location suggestions
+  const generateSuggestions = (value: string): string[] => {
+    if (value.length < 2) return [];
+    
+    const commonLocations = [
+      '新宿', '渋谷', '池袋', '東京', '品川', '上野', '浅草',
+      '秋葉原', '原宿', '六本木', '銀座', '丸の内', '表参道',
+      '恵比寿', '目黒', '五反田', '大崎', '田町', '新橋', '有楽町',
+      '神田', '日本橋', '築地', '豊洲', 'お台場', '両国', '錦糸町',
+      '押上', '北千住', '南千住', '町屋', '日暮里', '西日暮里'
+    ];
+    
+    const stations = [
+      '新宿駅', '渋谷駅', '池袋駅', '東京駅', '品川駅', '上野駅',
+      '秋葉原駅', '原宿駅', '六本木駅', '銀座駅', '表参道駅'
+    ];
+    
+    const areas = [
+      '新宿区', '渋谷区', '港区', '千代田区', '中央区', '台東区',
+      '文京区', '豊島区', '品川区', '目黒区', '世田谷区', '杉並区'
+    ];
+    
+    const allSuggestions = [...commonLocations, ...stations, ...areas];
+    const lowerValue = value.toLowerCase();
+    
+    return allSuggestions
+      .filter(suggestion => 
+        suggestion.toLowerCase().includes(lowerValue) ||
+        suggestion.includes(value)
+      )
+      .slice(0, 5); // Limit to 5 suggestions
+  };
+
+  // [SEARCH-ENHANCEMENT-004] Real-time validation effect
+  useEffect(() => {
+    const { isValid, error } = validateSearchInput(searchTerm);
+    setInputValid(isValid);
+    setInputError(error);
+
+    // Generate suggestions when typing
+    if (isTyping && searchTerm.length >= 2) {
+      const newSuggestions = generateSuggestions(searchTerm);
+      setSuggestions(newSuggestions);
+      setShowSuggestions(newSuggestions.length > 0);
+      setSelectedSuggestionIndex(-1);
+    } else {
+      setShowSuggestions(false);
+      setSuggestions([]);
+    }
+  }, [searchTerm, isTyping]);
+
+  // [SEARCH-ENHANCEMENT-005-B] Auto-hide suggestions after delay
+  useEffect(() => {
+    let timeoutId: NodeJS.Timeout;
+    
+    if (isTyping && showSuggestions) {
+      timeoutId = setTimeout(() => {
+        setIsTyping(false);
+      }, 2000);
+    }
+    
+    return () => {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+    };
+  }, [isTyping, showSuggestions]);
+
+  // [SEARCH-ENHANCEMENT-005] Enhanced search input handler with debouncing
+  const handleSearchInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setIsTyping(true);
+    setSearchTerm(e.target.value);
+  };
+
+  // [SEARCH-ENHANCEMENT-006] Keyboard navigation for suggestions
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!showSuggestions || suggestions.length === 0) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        if (inputValid) {
+          handleSearchByArea();
+        }
+      }
+      return;
+    }
+
+    switch (e.key) {
+      case 'ArrowDown':
+        e.preventDefault();
+        setSelectedSuggestionIndex(prev => 
+          prev < suggestions.length - 1 ? prev + 1 : 0
+        );
+        break;
+        
+      case 'ArrowUp':
+        e.preventDefault();
+        setSelectedSuggestionIndex(prev => 
+          prev > 0 ? prev - 1 : suggestions.length - 1
+        );
+        break;
+        
+      case 'Enter':
+        e.preventDefault();
+        if (selectedSuggestionIndex >= 0) {
+          selectSuggestion(selectedSuggestionIndex);
+        } else if (inputValid) {
+          handleSearchByArea();
+        }
+        break;
+        
+      case 'Escape':
+        setShowSuggestions(false);
+        setSelectedSuggestionIndex(-1);
+        searchInputRef.current?.blur();
+        break;
+        
+      case 'Tab':
+        if (selectedSuggestionIndex >= 0) {
+          e.preventDefault();
+          selectSuggestion(selectedSuggestionIndex);
+        } else {
+          setShowSuggestions(false);
+        }
+        break;
+    }
+  };
+
+  // [SEARCH-ENHANCEMENT-007] Handle suggestion selection
+  const selectSuggestion = (index: number) => {
+    if (index >= 0 && index < suggestions.length) {
+      setSearchTerm(suggestions[index]);
+      setShowSuggestions(false);
+      setSelectedSuggestionIndex(-1);
+      setIsTyping(false);
+      searchInputRef.current?.focus();
+    }
+  };
+
+  // [SEARCH-ENHANCEMENT-008] Close suggestions when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (suggestionsRef.current && !suggestionsRef.current.contains(event.target as Node) &&
+          searchInputRef.current && !searchInputRef.current.contains(event.target as Node)) {
+        setShowSuggestions(false);
+        setSelectedSuggestionIndex(-1);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   // Debounced search handlers (500ms delay to prevent excessive API calls)
   const debouncedAreaSearch = useDebounce(handleSearchByArea, 500);
@@ -689,22 +973,93 @@ const SearchPage: React.FC<SearchPageProps> = ({
         <div className="bg-gray-900 p-4 rounded-lg shadow-lg mb-4">
           <h2 className="text-xl font-bold mb-4">ラーメン店検索</h2>
           
-          {/* Search Input */}
+          {/* [SEARCH-ENHANCEMENT-009] Enhanced Search Input with validation and autocomplete */}
           <div className="relative mb-4">
-              <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 h-5 w-5 pointer-events-none" />
+              <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 h-5 w-5 pointer-events-none z-10" />
               <input
+                  ref={searchInputRef}
                   id="location-search"
                   type="text"
-                  placeholder="駅名・住所・郵便番号"
+                  placeholder="駅名・住所・郵便番号（例: 新宿、東京駅）"
                   value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-12 pr-4 py-3 border border-gray-700 rounded-lg shadow-sm focus:ring-2 focus:ring-red-500 transition bg-gray-800 text-white"
+                  onChange={handleSearchInputChange}
+                  onKeyDown={handleKeyDown}
+                  onFocus={() => setIsTyping(true)}
+                  className={`w-full pl-12 pr-4 py-3 border rounded-lg shadow-sm focus:ring-2 transition bg-gray-800 text-white ${
+                    inputError 
+                      ? 'border-red-500 focus:ring-red-500' 
+                      : inputValid 
+                        ? 'border-green-500 focus:ring-green-500' 
+                        : 'border-gray-700 focus:ring-red-500'
+                  }`}
+                  autoComplete="off"
               />
+              
+              {/* Real-time validation feedback */}
+              {isTyping && (
+                <div className="absolute right-4 top-1/2 -translate-y-1/2 z-10">
+                  {searchTerm.length > 0 && (
+                    inputError ? (
+                      <span className="text-red-500 text-sm">❌</span>
+                    ) : inputValid ? (
+                      <span className="text-green-500 text-sm">✅</span>
+                    ) : (
+                      <span className="text-yellow-500 text-sm animate-spin">⟳</span>
+                    )
+                  )}
+                </div>
+              )}
+
+              {/* Suggestions dropdown */}
+              {showSuggestions && suggestions.length > 0 && (
+                <div 
+                  ref={suggestionsRef}
+                  className="absolute top-full left-0 right-0 mt-1 bg-gray-800 border border-gray-600 rounded-lg shadow-lg z-20 max-h-60 overflow-y-auto"
+                >
+                  {suggestions.map((suggestion, index) => (
+                    <button
+                      key={suggestion}
+                      onClick={() => selectSuggestion(index)}
+                      className={`w-full text-left px-4 py-3 hover:bg-gray-700 border-b border-gray-700 last:border-b-0 transition-colors ${
+                        index === selectedSuggestionIndex ? 'bg-gray-700' : ''
+                      }`}
+                      type="button"
+                    >
+                      <div className="flex items-center">
+                        <MapPin className="h-4 w-4 text-gray-500 mr-2" />
+                        <span className="text-gray-200">{suggestion}</span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {/* Error message display */}
+              {inputError && (
+                <div className="absolute top-full left-0 right-0 mt-1 text-red-400 text-sm px-2">
+                  {inputError}
+                </div>
+              )}
           </div>
+          {/* [SEARCH-ENHANCEMENT-010] Enhanced search button with validation feedback */}
           <button 
             onClick={handleSearchByArea}
-            className="w-full bg-gray-700 text-gray-200 font-bold py-3 rounded-lg hover:bg-gray-600 transition shadow-md border border-gray-600 mb-3">
-              このエリアで検索
+            disabled={!inputValid || isFiltering}
+            className={`w-full font-bold py-3 rounded-lg transition shadow-md border mb-3 ${
+              inputValid && !isFiltering
+                ? 'bg-blue-600 text-white hover:bg-blue-700 border-blue-600 cursor-pointer'
+                : 'bg-gray-700 text-gray-400 border-gray-600 cursor-not-allowed opacity-60'
+            }`}>
+              {isFiltering ? (
+                <span className="flex items-center justify-center">
+                  <span className="animate-spin mr-2">⟳</span>
+                  検索中...
+                </span>
+              ) : inputValid ? (
+                'このエリアで検索'
+              ) : (
+                '検索するには有効な場所を入力してください'
+              )}
           </button>
           
           {/* マップ表示トグル */}

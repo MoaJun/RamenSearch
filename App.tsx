@@ -22,6 +22,14 @@ export default function App() {
   const [currentView, setCurrentView] = useState<View>('search');
   const [selectedShop, setSelectedShop] = useState<RamenShop | null>(null);
   
+  // DEBUG: ラップされたsetSelectedShopでログ出力
+  const handleShopSelection = (shop: RamenShop | null) => {
+    console.log('🔥 App: handleShopSelection called with shop:', shop?.name || 'null', shop?.placeId || 'null');
+    console.log('🔥 App: Current selectedShop before update:', selectedShop?.name || 'null');
+    setSelectedShop(shop);
+    console.log('🔥 App: setSelectedShop called successfully');
+  };
+  
   // Search state - moved from SearchPage to persist across navigation
   const [searchTerm, setSearchTerm] = useState('');
   const [sortKey, setSortKey] = useState<SortKey>('distance');
@@ -234,7 +242,7 @@ export default function App() {
         return (
           <Suspense fallback={<div className="flex justify-center items-center h-64"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500"></div></div>}>
             <SearchPage 
-              onShopSelect={setSelectedShop}
+              onShopSelect={handleShopSelection}
               searchTerm={searchTerm}
               setSearchTerm={setSearchTerm}
               sortKey={sortKey}
@@ -266,7 +274,7 @@ export default function App() {
               bookmarkedShops={bookmarkedShops}
               visitedShops={visitedShops}
               userPosts={userPosts}
-              onShopSelect={setSelectedShop}
+              onShopSelect={handleShopSelection}
             />
           </Suspense>
         );
@@ -274,7 +282,7 @@ export default function App() {
         return (
           <Suspense fallback={<div className="flex justify-center items-center h-64"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500"></div></div>}>
             <SearchPage 
-              onShopSelect={setSelectedShop}
+              onShopSelect={handleShopSelection}
               searchTerm={searchTerm}
               setSearchTerm={setSearchTerm}
               sortKey={sortKey}
